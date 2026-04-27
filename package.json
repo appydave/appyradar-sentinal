@@ -14,7 +14,8 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@appydave/appysentinel-core": "^0.1.0"
+    "@appydave/appysentinel-core": "^0.1.0",
+    "@modelcontextprotocol/sdk": "^1.10.2"
   },
   "devDependencies": {
     "@appydave/appysentinel-config": "^0.1.0",
