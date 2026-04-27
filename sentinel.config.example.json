@@ -1,0 +1,9 @@
+{
+  "machines": [
+    { "name": "my-macbook",  "host": "my-macbook-hostname" },
+    { "name": "mac-mini",    "host": "mac-mini-hostname" }
+  ],
+  "appsJsonPath": "/Users/yourname/.config/appydave/apps.json",
+  "collectIntervalMinutes": 10,
+  "skipGit": true
+}

@@ -2,54 +2,81 @@
  * AppyRadar Sentinel — lifecycle entry point.
  *
  * Wires the orchestrator-ssh collector into the AppySentinel harness:
- *   - lifecycle.onStart → schedules collection via setInterval
- *   - collectMachine() → one MachineSnapshot per machine
- *   - sentinel.emit()  → emits each snapshot as a Signal
- *   - atomicWrite      → writes fleet snapshot file crash-safely
+ *   - createConfigLoader  → reads sentinel.config.json (gitignored, per-deployment)
+ *   - lifecycle.onStart   → schedules collection via setInterval
+ *   - collectMachine()    → one MachineSnapshot per machine
+ *   - sentinel.emit()     → emits each snapshot as a Signal on the bus
+ *   - atomicWrite         → writes fleet snapshot file crash-safely
  *
- * Known issues (carried from PoC):
+ * Configuration: copy sentinel.config.example.json → sentinel.config.json
+ * and fill in your machines and appsJsonPath before running.
+ *
+ * Known issues (carried from PoC — see docs/graduation-candidates.md):
  *   - Relay/OMI parser: mode + session_id return undefined (format mismatch)
  *   - Mary machine: zero skills reported (likely setup issue on that machine)
  */
 
-import { createSentinel, atomicWrite } from '@appydave/appysentinel-core';
+import { createSentinel, atomicWrite, createConfigLoader, z } from '@appydave/appysentinel-core';
 import { hostname } from 'node:os';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectMachine } from './collectors/orchestrator.js';
-import type { MachineConfig, AppEntry, FleetSnapshot } from './types.js';
-
-const MACHINES: MachineConfig[] = [
-  { name: 'macbook-pro', host: 'macbook-pro' },
-  { name: 'mac-mini-m4', host: 'mac-mini-m4' },
-  { name: 'mac-mini-m2', host: 'mac-mini-m2' },
-  { name: 'jan',         host: 'jans-mac-mini' },
-  { name: 'mary',        host: 'marys-mac-mini' },
-];
+import type { AppEntry, FleetSnapshot } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const APPS_JSON_PATH = `${process.env['HOME']}/.config/appydave/apps.json`;
+const CONFIG_PATH = join(__dirname, '..', 'sentinel.config.json');
 const SNAPSHOT_DIR = join(__dirname, '..', 'snapshots');
-const COLLECT_INTERVAL_MS = 10 * 60 * 1_000; // 10 minutes
 
-function loadApps(): AppEntry[] {
-  if (!existsSync(APPS_JSON_PATH)) return [];
-  const raw = JSON.parse(readFileSync(APPS_JSON_PATH, 'utf8'));
+// ─── Config schema ────────────────────────────────────────────────────────────
+
+const SentinelConfigSchema = z.object({
+  machines: z.array(z.object({
+    name: z.string(),
+    host: z.string(),
+  })),
+  appsJsonPath:           z.string(),
+  collectIntervalMinutes: z.number(),
+  skipGit:                z.boolean(),
+});
+
+const configLoader = createConfigLoader({
+  schema:   SentinelConfigSchema,
+  defaults: {
+    machines:               [],
+    appsJsonPath:           `${process.env['HOME'] ?? '~'}/.config/appydave/apps.json`,
+    collectIntervalMinutes: 10,
+    skipGit:                true,
+  },
+  filePath: CONFIG_PATH,
+  env: {
+    APPS_JSON_PATH:            'appsJsonPath',
+    COLLECT_INTERVAL_MINUTES:  'collectIntervalMinutes',
+    SKIP_GIT:                  'skipGit',
+  },
+});
+
+// ─── App registry ─────────────────────────────────────────────────────────────
+
+function loadApps(appsJsonPath: string): AppEntry[] {
+  if (!existsSync(appsJsonPath)) return [];
+  const raw = JSON.parse(readFileSync(appsJsonPath, 'utf8'));
   return Object.entries(raw.apps).map(([key, v]: [string, any]) => ({
     key,
     display: v.display,
-    path: v.path,
-    ports: v.ports,
-    group: v.group,
-    tier: v.tier,
-    status: v.status,
-    notes: v.notes,
+    path:    v.path,
+    ports:   v.ports,
+    group:   v.group,
+    tier:    v.tier,
+    status:  v.status,
+    notes:   v.notes,
   }));
 }
 
+// ─── Sentinel ─────────────────────────────────────────────────────────────────
+
 const sentinel = createSentinel({
-  name: 'appyradar-sentinal',
+  name:    'appyradar-sentinal',
   machine: process.env['MACHINE_NAME'] ?? hostname(),
 });
 
@@ -61,22 +88,30 @@ sentinel.on((signal) => {
 });
 
 sentinel.lifecycle.onStart(async () => {
+  const cfg = await configLoader.load();
+
+  if (cfg.machines.length === 0) {
+    sentinel.logger.warn('No machines configured. Copy sentinel.config.example.json → sentinel.config.json and add your machines.');
+    return;
+  }
+
+  sentinel.logger.info({ machines: cfg.machines.map(m => m.name) }, 'fleet configured');
+
   async function runCollection() {
-    sentinel.logger.info('collection cycle starting');
-    const apps = loadApps();
+    const apps    = loadApps(cfg.appsJsonPath);
     const results = [];
 
-    for (const machine of MACHINES) {
+    for (const machine of cfg.machines) {
       const data = await collectMachine(machine, apps, {
-        skipGit: true,
+        skipGit: cfg.skipGit,
         log: (msg) => sentinel.logger.info(msg),
       });
       results.push(data);
 
       sentinel.emit({
-        source: 'orchestrator-ssh',
-        kind: 'state',
-        name: 'machine.snapshot',
+        source:  'orchestrator-ssh',
+        kind:    'state',
+        name:    'machine.snapshot',
         payload: data,
       });
     }
@@ -86,9 +121,9 @@ sentinel.lifecycle.onStart(async () => {
 
     const snapshot: FleetSnapshot = {
       schema_version: '1.3',
-      generated_at: new Date().toISOString(),
+      generated_at:   new Date().toISOString(),
       summary: {
-        total_machines:   MACHINES.length,
+        total_machines:   cfg.machines.length,
         online:           online.length,
         offline:          offline.length,
         offline_machines: offline.map(r => r.machine),
@@ -104,23 +139,24 @@ sentinel.lifecycle.onStart(async () => {
     await atomicWrite(join(SNAPSHOT_DIR, 'sentinel-latest.json'), json);
 
     sentinel.emit({
-      source: 'snapshot-store',
-      kind: 'event',
-      name: 'fleet.snapshot.written',
-      payload: { online: online.length, offline: offline.length, total: MACHINES.length },
+      source:  'snapshot-store',
+      kind:    'event',
+      name:    'fleet.snapshot.written',
+      payload: { online: online.length, offline: offline.length, total: cfg.machines.length },
     });
 
     sentinel.logger.info(
-      { online: online.length, offline: offline.length, total: MACHINES.length },
+      { online: online.length, offline: offline.length, total: cfg.machines.length },
       'collection cycle complete'
     );
   }
 
   // First run immediately, then on interval.
   await runCollection();
+  const intervalMs = cfg.collectIntervalMinutes * 60 * 1_000;
   setInterval(
     () => { runCollection().catch(err => sentinel.logger.error(err, 'collection failed')); },
-    COLLECT_INTERVAL_MS
+    intervalMs
   );
 });
 
