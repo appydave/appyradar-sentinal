@@ -1,0 +1,64 @@
+{
+  "name": "@appydave/appysentinel-config",
+  "version": "0.1.0",
+  "description": "Shared ESLint, TypeScript, Vitest, and Prettier configs for AppySentinel (Bun + TypeScript + Hono + Zod + Pino)",
+  "type": "module",
+  "exports": {
+    "./eslint/base": "./eslint/base.config.js",
+    "./vitest/node": "./vitest/node.config.ts",
+    "./typescript/base": "./typescript/base.json",
+    "./typescript/base.json": "./typescript/base.json",
+    "./typescript/node": "./typescript/node.json",
+    "./typescript/node.json": "./typescript/node.json",
+    "./prettier": "./prettier/.prettierrc"
+  },
+  "files": [
+    "eslint/",
+    "vitest/",
+    "typescript/",
+    "prettier/",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "echo 'config has no tests' && exit 0",
+    "typecheck": "echo 'config has no TS sources' && exit 0",
+    "lint": "echo 'config self-lint skipped' && exit 0",
+    "prepublishOnly": "npm pack --dry-run"
+  },
+  "peerDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@typescript-eslint/eslint-plugin": "^8.20.0",
+    "@typescript-eslint/parser": "^8.20.0",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.0.0 || ^3.0.0 || ^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
+  },
+  "keywords": [
+    "appydave",
+    "appysentinel",
+    "sentinel",
+    "telemetry",
+    "config",
+    "eslint",
+    "eslint-config",
+    "vitest",
+    "typescript",
+    "prettier",
+    "boilerplate"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/appydave/appysentinal.git",
+    "directory": "packages/config"
+  },
+  "homepage": "https://github.com/appydave/appysentinal#readme",
+  "author": "David Cruwys",
+  "license": "MIT"
+}

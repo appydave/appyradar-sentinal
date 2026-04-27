@@ -1,0 +1,86 @@
+{
+  "name": "@appydave/appysentinel-core",
+  "version": "0.1.0",
+  "description": "AppySentinel runtime library — Signal envelope, event bus, lifecycle, config loader, atomic write, serial queue, logger, createSentinel()",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./signal": {
+      "types": "./dist/signal.d.ts",
+      "import": "./dist/signal.js"
+    },
+    "./bus": {
+      "types": "./dist/bus.d.ts",
+      "import": "./dist/bus.js"
+    },
+    "./lifecycle": {
+      "types": "./dist/lifecycle.d.ts",
+      "import": "./dist/lifecycle.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
+    },
+    "./atomic-write": {
+      "types": "./dist/atomic-write.d.ts",
+      "import": "./dist/atomic-write.js"
+    },
+    "./serial-queue": {
+      "types": "./dist/serial-queue.d.ts",
+      "import": "./dist/serial-queue.js"
+    },
+    "./logger": {
+      "types": "./dist/logger.d.ts",
+      "import": "./dist/logger.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "src/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "echo 'core lint stub' && exit 0",
+    "prepublishOnly": "bun run build"
+  },
+  "dependencies": {
+    "pino": "^9.5.0",
+    "ulid": "^2.3.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "keywords": [
+    "appydave",
+    "appysentinel",
+    "sentinel",
+    "telemetry",
+    "observability",
+    "collector",
+    "signal",
+    "bun",
+    "node"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/appydave/appysentinal.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/appydave/appysentinal#readme",
+  "author": "David Cruwys",
+  "license": "MIT"
+}
