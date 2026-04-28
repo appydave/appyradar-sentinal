@@ -23,7 +23,7 @@ import {
   parseAnsible,
   parseAngelEye,
   parseGitRepos,
-} from '../collectors/parsers.js'
+} from '../collect/collectors/parsers.js'
 import type { AppEntry, SystemPayload } from '../types.js'
 
 // ─── splitSystemSnapshot ──────────────────────────────────────────────────────

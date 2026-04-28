@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Mochaccino citation — data: mockui/data/fleet-dashboard.json — source: sentinel-latest.json (PoC snapshot 2026-04-27) — rendered: 2026-04-27 -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AppyRadar — Alerts Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@200..700&family=Roboto:ital,wght@0,100..900;1,100..900&family=Roboto+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-brown: #342d2d;
+    --brand-gold: #ccba9d;
+    --brand-yellow: #ffde59;
+    --brand-amber: #c8841a;
+    --brand-muted: #7a6e5e;
+    --brand-near-white: #faf5ec;
+    --brand-surface: #f0ebe4;
+    --brand-linen: #e8e0d4;
+    --brand-border: #d4cdc4;
+    --brand-chrome: #1a1515;
+    --brand-dark-surface: #25201e;
+    --status-ok: #22c55e;
+    --status-warning: #f59e0b;
+    --status-critical: #dc2626;
+    --font: 'Roboto', system-ui, sans-serif;
+    --font-head: 'Oswald', system-ui, sans-serif;
+    --mono: 'Roboto Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--brand-near-white); color: var(--brand-brown); font-family: var(--font); font-size: 14px; }
+
+  header { background: var(--brand-dark-surface); color: var(--brand-gold); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px; }
+  .logo span { color: var(--brand-yellow); }
+  .header-meta { font-size: 12px; color: var(--brand-gold); opacity: 0.8; }
+
+  main { padding: 24px 28px; max-width: 860px; }
+
+  .section-label { font-family: var(--font-head); font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--brand-amber); margin-bottom: 16px; }
+
+  .alert-group { margin-bottom: 28px; }
+  .alert-group-label { display: flex; align-items: center; gap: 8px; font-family: var(--font-head); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; color: var(--brand-brown); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot.critical { background: var(--status-critical); }
+  .dot.warning { background: var(--status-warning); }
+  .dot.ok { background: var(--status-ok); }
+
+  .alert-list { display: flex; flex-direction: column; gap: 6px; }
+  .alert-row { background: white; border: 1px solid var(--brand-border); border-radius: 8px; padding: 12px 16px; display: grid; grid-template-columns: 140px 110px 1fr; align-items: center; gap: 12px; }
+  .alert-row.critical { border-left: 3px solid var(--status-critical); }
+  .alert-row.warning { border-left: 3px solid var(--status-warning); }
+  .alert-machine { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--brand-brown); }
+  .alert-kind { font-family: var(--font-head); font-size: 10px; color: var(--brand-muted); background: var(--brand-surface); padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px; justify-self: start; }
+  .alert-detail { font-size: 13px; color: var(--brand-muted); }
+  .alert-detail strong { color: var(--brand-brown); }
+
+  .empty-state { padding: 32px; text-align: center; color: var(--brand-muted); font-size: 13px; background: white; border-radius: 8px; border: 1px solid var(--brand-border); }
+  .empty-state .icon { font-size: 28px; margin-bottom: 8px; color: var(--status-ok); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Appy<span>Radar</span></div>
+  <div class="header-meta" id="header-meta">—</div>
+</header>
+
+<main>
+  <div class="section-label">Active Alerts</div>
+  <div id="alerts-container"></div>
+</main>
+
+<script>
+fetch('../../data/fleet-dashboard.json')
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById('header-meta').textContent =
+      `${data.alert_count} alert${data.alert_count !== 1 ? 's' : ''} · ${new Date(data.generated_at).toLocaleString()}`;
+    renderAlerts(data.alerts);
+  });
+
+function renderAlerts(alerts) {
+  const container = document.getElementById('alerts-container');
+  if (!alerts.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">✓</div>No active alerts</div>';
+    return;
+  }
+  const criticals = alerts.filter(a => a.level === 'critical');
+  const warnings  = alerts.filter(a => a.level === 'warning');
+
+  let html = '';
+  if (criticals.length) html += alertGroup('Critical', 'critical', criticals);
+  if (warnings.length)  html += alertGroup('Warning',  'warning',  warnings);
+  container.innerHTML = html;
+}
+
+function alertGroup(label, level, items) {
+  return `
+    <div class="alert-group">
+      <div class="alert-group-label">
+        <div class="dot ${level}"></div>
+        ${label} (${items.length})
+      </div>
+      <div class="alert-list">
+        ${items.map(a => `
+          <div class="alert-row ${level}">
+            <div class="alert-machine">${a.machine}</div>
+            <div class="alert-kind">${a.kind.replace('_', ' ')}</div>
+            <div class="alert-detail">${a.detail}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+</script>
+</body>
+</html>

@@ -42,7 +42,7 @@ import {
   parseAngelEye,
   parseGitRepos,
 } from './parsers.js'
-import type { MachineConfig, AppEntry, MachineSnapshot, CollectionError } from '../types.js'
+import type { MachineConfig, AppEntry, MachineSnapshot, CollectionError } from '../../types.js'
 
 export const GIT_SEARCH_PATHS = ['~/dev/ad', '~/dev/clients', '~/dev/kgems']
 export const MAX_REPOS = 100

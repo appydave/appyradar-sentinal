@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Mochaccino citation — data: docs/data/sentinel-docs.json — source: src/types.ts, src/expose/mcp.ts, docs/graduation-candidates.md — rendered: 2026-04-27 -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AppyRadar Sentinel — Overview</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@200..700&family=Roboto:ital,wght@0,100..900;1,100..900&family=Roboto+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-brown: #342d2d;
+    --brand-gold: #ccba9d;
+    --brand-yellow: #ffde59;
+    --brand-amber: #c8841a;
+    --brand-muted: #7a6e5e;
+    --brand-near-white: #faf5ec;
+    --brand-surface: #f0ebe4;
+    --brand-linen: #e8e0d4;
+    --brand-border: #d4cdc4;
+    --brand-chrome: #1a1515;
+    --brand-dark-surface: #25201e;
+    --font: 'Roboto', system-ui, sans-serif;
+    --font-head: 'Oswald', system-ui, sans-serif;
+    --mono: 'Roboto Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--brand-near-white); color: var(--brand-brown); font-family: var(--font); font-size: 15px; line-height: 1.65; }
+
+  header { background: var(--brand-dark-surface); color: var(--brand-gold); padding: 24px 40px 20px; border-bottom: 3px solid var(--brand-amber); }
+  .eyebrow { font-family: var(--font-head); font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--brand-gold); margin-bottom: 6px; opacity: 0.8; }
+  h1 { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 1px; color: white; }
+  .tagline { color: var(--brand-gold); margin-top: 4px; font-size: 14px; opacity: 0.75; }
+
+  main { max-width: 820px; padding: 36px 40px; display: flex; flex-direction: column; gap: 36px; }
+
+  section h2 { font-family: var(--font-head); font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--brand-amber); margin-bottom: 14px; }
+  p { color: var(--brand-brown); margin-bottom: 10px; font-size: 14px; }
+
+  .key-facts { display: flex; flex-direction: column; gap: 8px; }
+  .fact { display: flex; gap: 12px; align-items: flex-start; padding: 10px 14px; background: white; border-radius: 6px; border: 1px solid var(--brand-border); }
+  .fact-bullet { color: var(--brand-amber); font-weight: 700; flex-shrink: 0; margin-top: 1px; font-family: var(--font-head); }
+  .fact-text { font-size: 14px; color: var(--brand-muted); }
+  .fact-text strong { color: var(--brand-brown); }
+
+  .pipeline { display: flex; flex-direction: column; gap: 0; }
+  .pipeline-step { display: flex; gap: 16px; }
+  .pipeline-line { display: flex; flex-direction: column; align-items: center; }
+  .pipeline-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--brand-amber); flex-shrink: 0; margin-top: 5px; }
+  .pipeline-connector { width: 2px; background: var(--brand-border); flex: 1; min-height: 20px; margin: 3px 0; }
+  .pipeline-content { padding-bottom: 18px; }
+  .pipeline-name { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--brand-brown); }
+  .pipeline-file { font-family: var(--mono); font-size: 11px; color: var(--brand-muted); margin: 2px 0 4px; }
+  .pipeline-role { font-size: 13px; color: var(--brand-muted); }
+
+  .config-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .config-table th { text-align: left; padding: 8px 12px; font-family: var(--font-head); font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--brand-muted); border-bottom: 1px solid var(--brand-border); background: var(--brand-surface); }
+  .config-table td { padding: 10px 12px; border-bottom: 1px solid var(--brand-linen); vertical-align: top; }
+  .config-table tr:last-child td { border-bottom: none; }
+  .config-table td:first-child { font-family: var(--mono); color: var(--brand-brown); font-size: 13px; }
+  .config-table .type { color: var(--brand-muted); font-family: var(--mono); font-size: 11px; }
+  .config-table .default { color: var(--brand-amber); font-family: var(--mono); font-size: 11px; }
+  .config-table .desc { color: var(--brand-muted); font-size: 13px; }
+  .table-wrap { background: white; border: 1px solid var(--brand-border); border-radius: 8px; overflow: hidden; }
+</style>
+</head>
+<body>
+
+<header id="header"></header>
+<main id="main"></main>
+
+<script>
+fetch('../../data/sentinel-docs.json')
+  .then(r => r.json())
+  .then(data => {
+    renderHeader(data);
+    renderMain(data);
+  });
+
+function renderHeader(data) {
+  document.getElementById('header').innerHTML = `
+    <div class="eyebrow">AppySentinel · Pilot 1</div>
+    <h1>${data.meta.title}</h1>
+    <div class="tagline">${data.overview.tagline}</div>
+  `;
+}
+
+function renderMain(data) {
+  const o = data.overview;
+  document.getElementById('main').innerHTML = `
+    <section>
+      <h2>What it is</h2>
+      <p>${o.what}</p>
+      <p>${o.why}</p>
+    </section>
+
+    <section>
+      <h2>Key facts</h2>
+      <div class="key-facts">
+        ${o.key_facts.map(f => {
+          const [bold, ...rest] = f.split(' — ');
+          return `<div class="fact">
+            <div class="fact-bullet">→</div>
+            <div class="fact-text"><strong>${bold}</strong>${rest.length ? ' — ' + rest.join(' — ') : ''}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </section>
+
+    <section>
+      <h2>Collection pipeline</h2>
+      <p style="margin-bottom:18px;font-size:13px;color:var(--brand-muted)">${data.architecture.description}</p>
+      <div class="pipeline">
+        ${data.architecture.layers.map((layer, i) => `
+          <div class="pipeline-step">
+            <div class="pipeline-line">
+              <div class="pipeline-dot"></div>
+              ${i < data.architecture.layers.length - 1 ? '<div class="pipeline-connector"></div>' : ''}
+            </div>
+            <div class="pipeline-content">
+              <div class="pipeline-name">${layer.name}</div>
+              <div class="pipeline-file">${layer.file}</div>
+              <div class="pipeline-role">${layer.role}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </section>
+
+    <section>
+      <h2>Configuration (sentinel.config.json)</h2>
+      <p style="margin-bottom:14px;font-size:13px;color:var(--brand-muted)">${data.configuration.note}</p>
+      <div class="table-wrap">
+        <table class="config-table">
+          <thead><tr><th>Key</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            ${data.configuration.fields.map(f => `
+              <tr>
+                <td>${f.key}</td>
+                <td class="type">${f.type}</td>
+                <td class="default">${f.default !== undefined ? f.default : '—'}</td>
+                <td class="desc">${f.description}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+</script>
+</body>
+</html>

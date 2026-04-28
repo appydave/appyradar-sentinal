@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Mochaccino citation — data: docs/data/sentinel-docs.json — source: src/types.ts, docs/graduation-candidates.md — rendered: 2026-04-27 -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AppyRadar Sentinel — Collector Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@200..700&family=Roboto:ital,wght@0,100..900;1,100..900&family=Roboto+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-brown: #342d2d;
+    --brand-gold: #ccba9d;
+    --brand-yellow: #ffde59;
+    --brand-amber: #c8841a;
+    --brand-muted: #7a6e5e;
+    --brand-near-white: #faf5ec;
+    --brand-surface: #f0ebe4;
+    --brand-linen: #e8e0d4;
+    --brand-border: #d4cdc4;
+    --brand-chrome: #1a1515;
+    --brand-dark-surface: #25201e;
+    --stage-core: #22c55e;
+    --stage-plugin: #c8841a;
+    --stage-ingest: #3b82f6;
+    --stage-blocked: #dc2626;
+    --stage-graduated: #8b5cf6;
+    --font: 'Roboto', system-ui, sans-serif;
+    --font-head: 'Oswald', system-ui, sans-serif;
+    --mono: 'Roboto Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--brand-near-white); color: var(--brand-brown); font-family: var(--font); font-size: 14px; line-height: 1.6; }
+
+  header { background: var(--brand-dark-surface); color: var(--brand-gold); padding: 24px 40px 20px; border-bottom: 3px solid var(--brand-amber); }
+  .eyebrow { font-family: var(--font-head); font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--brand-gold); margin-bottom: 6px; opacity: 0.8; }
+  h1 { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 1px; color: white; }
+  .subtitle { color: var(--brand-gold); margin-top: 4px; font-size: 14px; opacity: 0.75; }
+
+  main { padding: 28px 40px; max-width: 1000px; }
+
+  .legend { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; }
+  .legend-label { font-family: var(--font-head); font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--brand-muted); margin-right: 4px; }
+  .stage-pill { font-family: var(--font-head); font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .stage-pill.core { background: rgba(34,197,94,0.12); color: var(--stage-core); }
+  .stage-pill.inline_plugin { background: rgba(200,132,26,0.12); color: var(--stage-plugin); }
+  .stage-pill.ingest_gesture { background: rgba(59,130,246,0.12); color: var(--stage-ingest); }
+  .stage-pill.blocked { background: rgba(220,38,38,0.1); color: var(--stage-blocked); }
+  .stage-pill.graduated { background: rgba(139,92,246,0.1); color: var(--stage-graduated); }
+
+  .collector-list { display: flex; flex-direction: column; gap: 8px; }
+  .collector-row { background: white; border: 1px solid var(--brand-border); border-radius: 8px; padding: 12px 16px; display: grid; grid-template-columns: 160px 160px 1fr; gap: 16px; align-items: start; }
+  .collector-row:hover { border-color: var(--brand-amber); }
+  .collector-name { font-family: var(--font-head); font-weight: 600; font-size: 14px; text-transform: uppercase; color: var(--brand-brown); }
+  .collector-signal { font-family: var(--mono); font-size: 11px; color: var(--brand-muted); margin-top: 4px; }
+  .collector-stage-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .collector-captures { font-size: 13px; color: var(--brand-muted); }
+  .collector-note { font-size: 12px; color: var(--brand-amber); margin-top: 6px; padding: 4px 8px; background: rgba(200,132,26,0.08); border-radius: 4px; border-left: 2px solid var(--brand-amber); }
+
+  h3 { font-family: var(--font-head); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--brand-amber); margin: 24px 0 10px; padding-top: 16px; border-top: 1px solid var(--brand-border); }
+  h3:first-of-type { border-top: none; margin-top: 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">AppyRadar Sentinel · Reference</div>
+  <h1>Collector Reference</h1>
+  <div class="subtitle">Every collector, what it captures, and its graduation stage</div>
+</header>
+
+<main id="main"></main>
+
+<script>
+fetch('../../data/sentinel-docs.json')
+  .then(r => r.json())
+  .then(data => renderMain(data));
+
+const STAGE_GROUPS = {
+  core:          'Core — Universal Machine Telemetry',
+  inline_plugin: 'Inline Plugins — AppyDave Stack',
+  ingest_gesture:'Ingest Gestures — External Data Pulls',
+  blocked:       'Blocked — Awaiting Prerequisite Sentinel',
+};
+
+function renderMain(data) {
+  const legend = `
+    <div class="legend">
+      <span class="legend-label">Stage:</span>
+      ${Object.keys(STAGE_GROUPS).map(s => `
+        <span class="stage-pill ${s}">${s.replace('_', ' ')}</span>`).join('')}
+    </div>`;
+
+  const groups = {};
+  for (const c of data.collectors) {
+    if (!groups[c.stage]) groups[c.stage] = [];
+    groups[c.stage].push(c);
+  }
+
+  const sections = Object.entries(STAGE_GROUPS).map(([stage, label]) => {
+    const collectors = groups[stage] || [];
+    if (!collectors.length) return '';
+    return `
+      <h3>${label}</h3>
+      <div class="collector-list">
+        ${collectors.map(c => `
+          <div class="collector-row">
+            <div>
+              <div class="collector-name">${c.name}</div>
+              <div class="collector-signal">${c.signal}</div>
+            </div>
+            <div class="collector-stage-wrap">
+              <span class="stage-pill ${c.stage}">${c.stage.replace('_', ' ')}</span>
+            </div>
+            <div>
+              <div class="collector-captures">${c.captures}</div>
+              ${c.notes ? `<div class="collector-note">${c.notes}</div>` : ''}
+            </div>
+          </div>`).join('')}
+      </div>`;
+  }).join('');
+
+  document.getElementById('main').innerHTML = legend + sections;
+}
+</script>
+</body>
+</html>

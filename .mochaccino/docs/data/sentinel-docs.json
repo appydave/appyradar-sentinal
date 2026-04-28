@@ -1,0 +1,220 @@
+{
+  "meta": {
+    "title": "AppyRadar Sentinel Documentation",
+    "source": "src/types.ts, src/expose/mcp.ts, docs/graduation-candidates.md, src/collectors/",
+    "generated": "2026-04-27",
+    "version": "0.1.0"
+  },
+  "overview": {
+    "name": "appyradar-sentinal",
+    "tagline": "Fleet telemetry for the AppyDave machine network",
+    "what": "An always-on headless process that SSHes into every machine in the fleet from a single orchestrator, collects telemetry, writes a snapshot file, and exposes the data via MCP for Claude and other agents to query.",
+    "why": "Five machines, zero dashboards. Understanding what's running, what's broken, and what's drifting requires either SSHing into each machine manually or having something do it for you. AppyRadar Sentinel does it for you.",
+    "key_facts": [
+      "Zero remote footprint — no agent installed on target machines; all collection via SSH stdin pipe",
+      "7 SSH connections per machine (compound scripts, down from 12 naive calls)",
+      "10-minute collection interval by default",
+      "Snapshot written atomically — readers always see a complete file",
+      "MCP server is read-only over the snapshot file — never touches live systems"
+    ]
+  },
+  "architecture": {
+    "description": "Three-layer pipeline: bash scripts run on remote machines → parsers convert raw output to typed data → orchestrator assembles one MachineSnapshot per machine → snapshot-store writes to disk → MCP server exposes to agents",
+    "layers": [
+      {
+        "name": "SSH Transport",
+        "file": "src/ssh/client.ts",
+        "role": "Pipes bash scripts to remote machines via stdin. Returns empty string on any failure — callers detect silent failures by checking for empty."
+      },
+      {
+        "name": "Bash Scripts",
+        "file": "src/collectors/bash-scripts.ts",
+        "role": "Template functions that generate the bash scripts run on each machine. PATH-explicit (bun, tailscale, docker) to avoid missing-tool false negatives."
+      },
+      {
+        "name": "Parsers",
+        "file": "src/collectors/parsers.ts",
+        "role": "Pure string → typed result. No SSH, no filesystem, no side effects. Every function handles null/undefined/empty input gracefully."
+      },
+      {
+        "name": "Orchestrator",
+        "file": "src/collectors/orchestrator.ts",
+        "role": "collectMachine() wires all three layers for one machine. Returns a MachineSnapshot regardless of outcome — offline machines return status: offline."
+      },
+      {
+        "name": "Snapshot Store",
+        "file": "src/main.ts",
+        "role": "Writes sentinel-latest.json and a dated archive atomically after every collection cycle."
+      },
+      {
+        "name": "MCP Server",
+        "file": "src/expose/mcp.ts",
+        "role": "Read-only layer over sentinel-latest.json. 7 tools. Never touches collectors or live systems."
+      }
+    ]
+  },
+  "configuration": {
+    "file": "sentinel.config.json",
+    "note": "Gitignored, per-deployment. Copy sentinel.config.example.json to get started.",
+    "fields": [
+      { "key": "machines", "type": "array", "description": "Fleet definition — name (logical) and host (SSH hostname)" },
+      { "key": "appsJsonPath", "type": "string", "description": "Path to apps.json registry. Returns empty app_status if absent." },
+      { "key": "collectIntervalMinutes", "type": "number", "default": 10, "description": "How often to run a full collection cycle" },
+      { "key": "skipGit", "type": "boolean", "default": true, "description": "Git repo scan is slow (~3-5 min per machine). Skip for routine collection." }
+    ]
+  },
+  "collectors": [
+    {
+      "name": "Identity",
+      "signal": "machine.identity",
+      "stage": "core",
+      "stage_label": "Always inline — universal",
+      "captures": "hostname, OS, arch, uptime, user, load averages",
+      "notes": null
+    },
+    {
+      "name": "System / Memory",
+      "signal": "machine.memory",
+      "stage": "core",
+      "stage_label": "Always inline — universal",
+      "captures": "RAM total, used, free, use%, memory pressure (from sysctl kern.memorystatus_vm_pressure_level)",
+      "notes": "Pressure is 1=ok, 2=warning, 4=critical. Heuristic fallback for non-macOS."
+    },
+    {
+      "name": "Disk",
+      "signal": "machine.disk",
+      "stage": "core",
+      "stage_label": "Always inline — universal",
+      "captures": "Per-volume: filesystem, total/used/avail GB, use%, mount, alert level",
+      "notes": "Alert: ok < 70%, warning 70-85%, critical ≥ 85%"
+    },
+    {
+      "name": "Tools",
+      "signal": "machine.tools",
+      "stage": "inline_plugin",
+      "stage_label": "Inline plugin — AppyDave stack",
+      "captures": "Version strings for: ruby, node, bun, python3, ansible, git, brew, claude, tmux, docker, rbenv, ollama, tailscale. brew_outdated count.",
+      "notes": "Tool list reflects AppyDave stack. Future: configurable tool list via config."
+    },
+    {
+      "name": "App Status",
+      "signal": "machine.app_status",
+      "stage": "inline_plugin",
+      "stage_label": "Inline plugin — AppyDave apps.json",
+      "captures": "Per registered app: path exists, port listening, display name, group, tier",
+      "notes": "Data source: appsJsonPath in sentinel.config.json. Returns empty if file absent."
+    },
+    {
+      "name": "Skills & Claude",
+      "signal": "machine.skills",
+      "stage": "inline_plugin",
+      "stage_label": "Inline plugin — candidate for Skills Sentinel",
+      "captures": "Global Claude skills, plugins, commands, claude version",
+      "notes": "Future: Skills & Agents Sentinel. AppyRadar would consume its expose surface."
+    },
+    {
+      "name": "Brains",
+      "signal": "machine.brains",
+      "stage": "inline_plugin",
+      "stage_label": "Inline plugin — AppyDave brain system",
+      "captures": "Brain count, stale count, by-activity breakdown, per-brain metadata",
+      "notes": null
+    },
+    {
+      "name": "Ansible",
+      "signal": "machine.ansible",
+      "stage": "inline_plugin",
+      "stage_label": "Inline plugin — AppyDave fleet management",
+      "captures": "Playbooks, roles, inventory hosts",
+      "notes": null
+    },
+    {
+      "name": "Relay (Syncthing)",
+      "signal": "machine.relay",
+      "stage": "inline_plugin",
+      "stage_label": "Inline plugin — AppyDave file relay",
+      "captures": "Relay exists, syncthing running, folder list with file counts",
+      "notes": null
+    },
+    {
+      "name": "OMI",
+      "signal": "machine.omi",
+      "stage": "ingest_gesture",
+      "stage_label": "Ingest gesture — candidate for OMI Sentinel",
+      "captures": "Total files, enriched, pending, newest/oldest, monthly breakdown, sample pending",
+      "notes": "Known issue: mode and session_id return undefined — format mismatch in parser."
+    },
+    {
+      "name": "AngelEye",
+      "signal": "machine.angeleye",
+      "stage": "blocked",
+      "stage_label": "Blocked — waiting for AngelEye Sentinel",
+      "captures": "Installed, running, session counts (total, active, 24h), top project, session types",
+      "notes": "Current AngelEye is pre-sentinel. Once AngelEye becomes a proper sentinel, this inline collector is replaced by an MCP/REST client call to AngelEye's expose surface."
+    },
+    {
+      "name": "Git Repos",
+      "signal": "machine.git_repos",
+      "stage": "inline_plugin",
+      "stage_label": "Inline plugin — optional slow scan",
+      "captures": "Per repo: path, branch, dirty files, unpushed commits, last commit, remote",
+      "notes": "skipGit: true in config skips this. Full scan takes ~3-5 min per machine."
+    }
+  ],
+  "mcp_tools": [
+    {
+      "name": "fleet_status",
+      "description": "Summary of all machines — online/offline, memory pressure, disk alerts, running apps",
+      "inputs": [],
+      "output_fields": ["generated_at", "data_age_minutes", "stale", "online", "total", "offline_machines", "machines[].memory_pressure", "machines[].disk_alert", "machines[].apps_running", "machines[].claude_version", "machines[].skills_count"]
+    },
+    {
+      "name": "machine_detail",
+      "description": "Full snapshot for one machine — all collectors",
+      "inputs": [{ "name": "machine", "type": "string", "example": "macbook-pro" }],
+      "output_fields": ["All MachineSnapshot fields"]
+    },
+    {
+      "name": "running_apps",
+      "description": "Which registered apps are currently listening on ports",
+      "inputs": [{ "name": "machine", "type": "string", "optional": true }],
+      "output_fields": ["apps[].machine", "apps[].app", "apps[].display", "apps[].running", "apps[].ports"]
+    },
+    {
+      "name": "disk_usage",
+      "description": "Disk volumes and alert levels across machines",
+      "inputs": [{ "name": "machine", "type": "string", "optional": true }],
+      "output_fields": ["volumes[].machine", "volumes[].mount", "volumes[].use_pct", "volumes[].alert", "volumes[].used_gb", "volumes[].total_gb"]
+    },
+    {
+      "name": "alerts",
+      "description": "All current warning/critical conditions across the fleet",
+      "inputs": [],
+      "output_fields": ["alert_count", "alerts[].machine", "alerts[].kind", "alerts[].level", "alerts[].detail"]
+    },
+    {
+      "name": "skills_diff",
+      "description": "Compare Claude skills across machines — surfaces drift",
+      "inputs": [],
+      "output_fields": ["reference_machine", "machines[].skill_count", "machines[].claude_version", "machines[].missing_skills", "machines[].extra_skills"]
+    },
+    {
+      "name": "git_dirty",
+      "description": "Git repos with uncommitted or unpushed changes (requires git scan)",
+      "inputs": [{ "name": "machine", "type": "string", "optional": true }],
+      "output_fields": ["total", "repos[].machine", "repos[].path", "repos[].branch", "repos[].dirty_files", "repos[].unpushed_commits"]
+    }
+  ],
+  "known_issues": [
+    {
+      "issue": "Relay/OMI parser: mode and session_id return undefined",
+      "cause": "Format mismatch between bash script output and parser expectations",
+      "status": "open"
+    },
+    {
+      "issue": "Mary machine: zero skills reported",
+      "cause": "Likely a setup issue on that machine — Claude skills not configured",
+      "status": "open"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "workspace": "appyradar-sentinal",
+  "type": "parallel",
+  "updated": "2026-04-27",
+  "designs": [
+    {
+      "id": "docs-01",
+      "workspace": "docs",
+      "slug": "01-sentinel-overview",
+      "title": "Sentinel Overview",
+      "description": "What AppyRadar Sentinel is, why it exists, and how the three-layer collection pipeline works",
+      "status": "active",
+      "data": "docs/data/sentinel-docs.json",
+      "view": "docs/designs/01-sentinel-overview/index.html"
+    },
+    {
+      "id": "docs-02",
+      "workspace": "docs",
+      "slug": "02-collector-reference",
+      "title": "Collector Reference",
+      "description": "All collectors with signal names, graduation stage, and what each one captures",
+      "status": "active",
+      "data": "docs/data/sentinel-docs.json",
+      "view": "docs/designs/02-collector-reference/index.html"
+    },
+    {
+      "id": "docs-03",
+      "workspace": "docs",
+      "slug": "03-mcp-reference",
+      "title": "MCP Tool Reference",
+      "description": "The 7 MCP tools — inputs, outputs, and example use cases",
+      "status": "active",
+      "data": "docs/data/sentinel-docs.json",
+      "view": "docs/designs/03-mcp-reference/index.html"
+    },
+    {
+      "id": "mockui-01",
+      "workspace": "mockui",
+      "slug": "01-fleet-overview",
+      "title": "Fleet Overview",
+      "description": "Dashboard card grid — all machines with memory bars, disk alerts, running apps, skills count",
+      "status": "active",
+      "data": "mockui/data/fleet-dashboard.json",
+      "view": "mockui/designs/01-fleet-overview/index.html"
+    },
+    {
+      "id": "mockui-02",
+      "workspace": "mockui",
+      "slug": "02-alerts-panel",
+      "title": "Alerts Panel",
+      "description": "All current warning and critical conditions across the fleet",
+      "status": "active",
+      "data": "mockui/data/fleet-dashboard.json",
+      "view": "mockui/designs/02-alerts-panel/index.html"
+    }
+  ]
+}

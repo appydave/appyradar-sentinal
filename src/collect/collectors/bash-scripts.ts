@@ -11,7 +11,7 @@
  * into one SSH call. See docs/ssh-batching.md for rationale.
  */
 
-import type { AppEntry } from '../types.js'
+import type { AppEntry } from '../../types.js'
 
 // ─── Batched: identity + system + memory_pressure + disk ────────────────────────
 

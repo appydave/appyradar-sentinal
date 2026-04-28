@@ -25,7 +25,7 @@ import type {
   AnsiblePayload,
   AngelEyePayload,
   GitRepoPayload,
-} from '../types.js'
+} from '../../types.js'
 
 // ─── System snapshot (batched: identity + system + disk) ───────────────────────
 

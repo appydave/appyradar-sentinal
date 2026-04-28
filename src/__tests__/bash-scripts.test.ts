@@ -17,7 +17,7 @@ import {
   agentStateScript,
   angelEyeScript,
   gitReposScript,
-} from '../collectors/bash-scripts.js'
+} from '../collect/collectors/bash-scripts.js'
 import type { AppEntry } from '../types.js'
 
 // ─── systemSnapshotScript ─────────────────────────────────────────────────────

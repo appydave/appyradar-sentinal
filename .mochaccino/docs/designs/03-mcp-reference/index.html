@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Mochaccino citation — data: docs/data/sentinel-docs.json — source: src/expose/mcp.ts — rendered: 2026-04-27 -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AppyRadar Sentinel — MCP Tool Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@200..700&family=Roboto:ital,wght@0,100..900;1,100..900&family=Roboto+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-brown: #342d2d;
+    --brand-gold: #ccba9d;
+    --brand-yellow: #ffde59;
+    --brand-amber: #c8841a;
+    --brand-muted: #7a6e5e;
+    --brand-near-white: #faf5ec;
+    --brand-surface: #f0ebe4;
+    --brand-linen: #e8e0d4;
+    --brand-border: #d4cdc4;
+    --brand-chrome: #1a1515;
+    --brand-dark-surface: #25201e;
+    --status-warning: #f59e0b;
+    --font: 'Roboto', system-ui, sans-serif;
+    --font-head: 'Oswald', system-ui, sans-serif;
+    --mono: 'Roboto Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--brand-near-white); color: var(--brand-brown); font-family: var(--font); font-size: 14px; line-height: 1.6; }
+
+  header { background: var(--brand-dark-surface); color: var(--brand-gold); padding: 24px 40px 20px; border-bottom: 3px solid var(--brand-amber); }
+  .eyebrow { font-family: var(--font-head); font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--brand-gold); margin-bottom: 6px; opacity: 0.8; }
+  h1 { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 1px; color: white; }
+  .subtitle { color: var(--brand-gold); margin-top: 4px; font-size: 14px; opacity: 0.75; }
+
+  main { padding: 28px 40px; max-width: 860px; display: flex; flex-direction: column; gap: 16px; }
+
+  .intro { font-size: 13px; color: var(--brand-muted); padding: 14px 18px; background: white; border-radius: 8px; border: 1px solid var(--brand-border); border-left: 3px solid var(--brand-amber); line-height: 1.7; }
+  .intro strong { color: var(--brand-brown); }
+
+  .tool-card { background: white; border: 1px solid var(--brand-border); border-radius: 10px; overflow: hidden; }
+  .tool-header { padding: 12px 18px; border-bottom: 1px solid var(--brand-linen); display: flex; align-items: baseline; gap: 12px; background: var(--brand-surface); }
+  .tool-name { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--brand-brown); }
+  .tool-desc { font-size: 13px; color: var(--brand-muted); }
+  .tool-body { padding: 14px 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .tool-section-label { font-family: var(--font-head); font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--brand-amber); margin-bottom: 8px; }
+  .input-list { display: flex; flex-direction: column; gap: 6px; }
+  .input-row { display: flex; gap: 8px; align-items: baseline; }
+  .input-name { font-family: var(--mono); font-size: 12px; color: var(--brand-brown); }
+  .input-optional { font-size: 10px; color: var(--brand-muted); background: var(--brand-linen); padding: 1px 6px; border-radius: 4px; font-family: var(--font-head); text-transform: uppercase; letter-spacing: 0.3px; }
+  .input-example { font-size: 11px; color: var(--brand-muted); font-family: var(--mono); }
+  .no-inputs { font-size: 13px; color: var(--brand-muted); font-style: italic; }
+  .output-list { display: flex; flex-direction: column; gap: 3px; }
+  .output-field { font-family: var(--mono); font-size: 11px; color: var(--brand-muted); }
+
+  .issues-section { margin-top: 8px; }
+  .issue-card { display: flex; gap: 12px; padding: 12px 14px; background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.25); border-radius: 6px; margin-bottom: 8px; }
+  .issue-label { font-family: var(--font-head); font-size: 10px; font-weight: 600; color: var(--status-warning); text-transform: uppercase; letter-spacing: 0.4px; flex-shrink: 0; }
+  .issue-text { font-size: 13px; color: var(--brand-muted); }
+  .issue-text strong { color: var(--brand-brown); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">AppyRadar Sentinel · Reference</div>
+  <h1>MCP Tool Reference</h1>
+  <div class="subtitle">7 read-only tools over sentinel-latest.json</div>
+</header>
+
+<main id="main"></main>
+
+<script>
+fetch('../../data/sentinel-docs.json')
+  .then(r => r.json())
+  .then(data => renderMain(data));
+
+function renderMain(data) {
+  const intro = `
+    <div class="intro">
+      The MCP server is a <strong>read-only layer over <code>snapshots/sentinel-latest.json</code></strong>.
+      It never touches collectors or live systems. Every response includes <strong>data_age_minutes</strong>
+      so agents know how fresh the data is. Stale threshold: 60 minutes.
+    </div>`;
+
+  const tools = data.mcp_tools.map(tool => `
+    <div class="tool-card">
+      <div class="tool-header">
+        <div class="tool-name">${tool.name}</div>
+        <div class="tool-desc">${tool.description}</div>
+      </div>
+      <div class="tool-body">
+        <div>
+          <div class="tool-section-label">Inputs</div>
+          ${tool.inputs.length === 0
+            ? '<div class="no-inputs">None</div>'
+            : `<div class="input-list">${tool.inputs.map(i => `
+                <div class="input-row">
+                  <div class="input-name">${i.name}</div>
+                  ${i.optional ? '<span class="input-optional">optional</span>' : ''}
+                  ${i.example ? `<div class="input-example">e.g. "${i.example}"</div>` : ''}
+                </div>`).join('')}
+              </div>`}
+        </div>
+        <div>
+          <div class="tool-section-label">Output fields</div>
+          <div class="output-list">
+            ${tool.output_fields.map(f => `<div class="output-field">${f}</div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+
+  const issues = `
+    <div class="issues-section">
+      <div class="tool-section-label" style="margin-bottom:10px">Known issues</div>
+      ${data.known_issues.map(i => `
+        <div class="issue-card">
+          <div class="issue-label">Open</div>
+          <div class="issue-text"><strong>${i.issue}</strong> — ${i.cause}</div>
+        </div>`).join('')}
+    </div>`;
+
+  document.getElementById('main').innerHTML = intro + tools + issues;
+}
+</script>
+</body>
+</html>

@@ -3,4 +3,5 @@ dist/
 .env
 sentinel.config.json
 snapshots/
+state/
 *.tmp

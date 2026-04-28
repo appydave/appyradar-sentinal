@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Mochaccino citation — data: mockui/data/fleet-dashboard.json — source: sentinel-latest.json (PoC snapshot 2026-04-27) — rendered: 2026-04-27 -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AppyRadar — Fleet Overview</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@200..700&family=Roboto:ital,wght@0,100..900;1,100..900&family=Roboto+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-brown: #342d2d;
+    --brand-gold: #ccba9d;
+    --brand-yellow: #ffde59;
+    --brand-amber: #c8841a;
+    --brand-muted: #7a6e5e;
+    --brand-near-white: #faf5ec;
+    --brand-surface: #f0ebe4;
+    --brand-linen: #e8e0d4;
+    --brand-border: #d4cdc4;
+    --brand-chrome: #1a1515;
+    --brand-dark-surface: #25201e;
+    --status-ok: #22c55e;
+    --status-warning: #f59e0b;
+    --status-critical: #dc2626;
+    --status-offline: #9ca3af;
+    --font: 'Roboto', system-ui, sans-serif;
+    --font-head: 'Oswald', system-ui, sans-serif;
+    --mono: 'Roboto Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--brand-near-white); color: var(--brand-brown); font-family: var(--font); font-size: 14px; line-height: 1.5; }
+
+  header { background: var(--brand-dark-surface); color: var(--brand-gold); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px; }
+  .logo span { color: var(--brand-yellow); }
+  .header-meta { font-family: var(--font); font-size: 12px; color: var(--brand-gold); text-align: right; opacity: 0.8; }
+
+  .summary-bar { display: flex; gap: 0; border-bottom: 2px solid var(--brand-border); background: var(--brand-surface); }
+  .stat { display: flex; flex-direction: column; gap: 2px; padding: 14px 24px; border-right: 1px solid var(--brand-border); }
+  .stat:last-child { border-right: none; }
+  .stat-value { font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--brand-brown); }
+  .stat-label { font-family: var(--font-head); font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--brand-muted); }
+  .stat-value.ok { color: var(--status-ok); }
+  .stat-value.warning { color: var(--status-warning); }
+  .stat-value.critical { color: var(--status-critical); }
+
+  main { padding: 24px 28px; }
+  .section-label { font-family: var(--font-head); font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--brand-amber); margin-bottom: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+
+  .machine-card { background: white; border: 1px solid var(--brand-border); border-radius: 8px; overflow: hidden; }
+  .machine-card.warning { border-color: var(--status-warning); border-left: 3px solid var(--status-warning); }
+  .machine-card.critical { border-color: var(--status-critical); border-left: 3px solid var(--status-critical); }
+  .machine-card.offline { opacity: 0.55; }
+
+  .card-header { padding: 12px 16px 10px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--brand-linen); background: var(--brand-surface); }
+  .machine-name { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--brand-brown); }
+  .status-badge { font-family: var(--font-head); font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .status-badge.online { background: rgba(34,197,94,0.12); color: var(--status-ok); }
+  .status-badge.offline { background: rgba(156,163,175,0.15); color: var(--status-offline); }
+
+  .card-body { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+  .metric-row { display: flex; align-items: center; gap: 10px; }
+  .metric-label { font-family: var(--font-head); font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--brand-muted); width: 52px; flex-shrink: 0; }
+  .metric-value { font-family: var(--mono); font-size: 12px; color: var(--brand-brown); }
+  .metric-value.ok { color: var(--status-ok); }
+  .metric-value.warning { color: var(--status-warning); }
+  .metric-value.critical { color: var(--status-critical); }
+
+  .bar-wrap { flex: 1; height: 6px; background: var(--brand-linen); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; }
+  .bar-fill.ok { background: var(--status-ok); }
+  .bar-fill.warning { background: var(--status-warning); }
+  .bar-fill.critical { background: var(--status-critical); }
+
+  .disk-list { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .disk-row { display: flex; align-items: center; gap: 8px; }
+  .disk-mount { font-family: var(--mono); font-size: 10px; color: var(--brand-muted); width: 36px; }
+
+  .card-footer { padding: 10px 16px; border-top: 1px solid var(--brand-linen); display: flex; gap: 16px; background: var(--brand-surface); }
+  .footer-stat { display: flex; flex-direction: column; gap: 1px; }
+  .footer-stat-value { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--brand-brown); }
+  .footer-stat-label { font-family: var(--font-head); font-size: 9px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--brand-muted); }
+  .footer-stat-value.zero { color: var(--brand-muted); }
+  .footer-stat-value.has-apps { color: var(--status-ok); }
+
+  .errors-badge { margin-left: auto; font-size: 11px; color: var(--status-warning); align-self: center; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Appy<span>Radar</span></div>
+  <div class="header-meta">
+    <div>Fleet Overview</div>
+    <div id="age-display">—</div>
+  </div>
+</header>
+
+<div class="summary-bar" id="summary-bar"></div>
+
+<main>
+  <div class="section-label">Machines</div>
+  <div class="grid" id="machine-grid"></div>
+</main>
+
+<script>
+fetch('../../data/fleet-dashboard.json')
+  .then(r => r.json())
+  .then(data => {
+    renderSummary(data);
+    renderGrid(data);
+    document.getElementById('age-display').textContent =
+      new Date(data.generated_at).toLocaleString() + ' · PoC snapshot';
+  });
+
+function pressureClass(p) {
+  return p === 'critical' ? 'critical' : p === 'warning' ? 'warning' : 'ok';
+}
+
+function renderSummary(data) {
+  const s = data.summary;
+  const warnings = data.alerts.filter(a => a.level === 'warning').length;
+  const criticals = data.alerts.filter(a => a.level === 'critical').length;
+  document.getElementById('summary-bar').innerHTML = `
+    <div class="stat"><div class="stat-value ok">${s.online}</div><div class="stat-label">Online</div></div>
+    <div class="stat"><div class="stat-value">${s.total_machines}</div><div class="stat-label">Total</div></div>
+    <div class="stat"><div class="stat-value">${s.apps_registered}</div><div class="stat-label">Apps Registered</div></div>
+    <div class="stat"><div class="stat-value ${warnings > 0 ? 'warning' : 'ok'}">${warnings}</div><div class="stat-label">Warnings</div></div>
+    <div class="stat"><div class="stat-value ${criticals > 0 ? 'critical' : 'ok'}">${criticals}</div><div class="stat-label">Critical</div></div>
+  `;
+}
+
+function renderGrid(data) {
+  const grid = document.getElementById('machine-grid');
+  grid.innerHTML = data.machines.map(m => {
+    if (m.status !== 'online') return offlineCard(m);
+    const memClass = pressureClass(m.memory.pressure);
+    const cardClass = m.disk_alert !== 'ok' ? m.disk_alert : memClass !== 'ok' ? memClass : '';
+    return `
+      <div class="machine-card ${cardClass}">
+        <div class="card-header">
+          <div class="machine-name">${m.name}</div>
+          <span class="status-badge online">online</span>
+        </div>
+        <div class="card-body">
+          <div class="metric-row">
+            <div class="metric-label">Memory</div>
+            <div class="metric-value ${memClass}">${m.memory.use_pct}%</div>
+            <div class="bar-wrap"><div class="bar-fill ${memClass}" style="width:${m.memory.use_pct}%"></div></div>
+            <div class="metric-value ${memClass}" style="font-size:11px">${m.memory.used_gb}/${m.memory.total_gb}G</div>
+          </div>
+          <div class="metric-row">
+            <div class="metric-label">Disk</div>
+            <div class="disk-list">${m.disk.map(d => `
+              <div class="disk-row">
+                <div class="disk-mount">${d.mount.split('/').pop() || '/'}</div>
+                <div class="bar-wrap"><div class="bar-fill ${d.alert}" style="width:${d.use_pct}%"></div></div>
+                <div class="metric-value ${d.alert}" style="font-size:11px">${d.use_pct}%</div>
+              </div>`).join('')}
+            </div>
+          </div>
+          <div class="metric-row">
+            <div class="metric-label">Load</div>
+            <div class="metric-value">${m.identity.load_1m}</div>
+            <div style="font-size:11px;color:var(--brand-muted);margin-left:4px">${m.identity.arch} · ${m.identity.uptime}</div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="footer-stat">
+            <div class="footer-stat-value ${m.skills.global_count > 0 ? '' : 'zero'}">${m.skills.global_count}</div>
+            <div class="footer-stat-label">Skills</div>
+          </div>
+          <div class="footer-stat">
+            <div class="footer-stat-value ${m.apps.running_count > 0 ? 'has-apps' : 'zero'}">${m.apps.running_count}</div>
+            <div class="footer-stat-label">Apps Running</div>
+          </div>
+          <div class="footer-stat">
+            <div class="footer-stat-value" style="font-size:11px">${m.skills.claude_version || '—'}</div>
+            <div class="footer-stat-label">Claude</div>
+          </div>
+          ${m.collection_errors > 0 ? `<div class="errors-badge">⚠ ${m.collection_errors} errors</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function offlineCard(m) {
+  return `
+    <div class="machine-card offline">
+      <div class="card-header">
+        <div class="machine-name">${m.name}</div>
+        <span class="status-badge offline">${m.status}</span>
+      </div>
+    </div>`;
+}
+</script>
+</body>
+</html>

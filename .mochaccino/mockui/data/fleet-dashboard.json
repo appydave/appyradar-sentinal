@@ -1,0 +1,414 @@
+{
+  "meta": {
+    "title": "AppyRadar Fleet Dashboard",
+    "source": "sentinel-latest.json (PoC snapshot 2026-04-27)",
+    "generated": "2026-04-27",
+    "note": "Seed data from PoC run. Replace with live sentinel-latest.json after first real collection."
+  },
+  "summary": {
+    "total_machines": 5,
+    "online": 5,
+    "offline": 0,
+    "offline_machines": [],
+    "apps_registered": 22
+  },
+  "generated_at": "2026-04-27T02:18:16.640Z",
+  "data_age_minutes": 0,
+  "machines": [
+    {
+      "name": "macbook-pro",
+      "host": "macbook-pro",
+      "status": "online",
+      "checked_at": "2026-04-27T02:16:54.080Z",
+      "collection_errors": 0,
+      "memory": {
+        "use_pct": 92,
+        "used_gb": 22,
+        "total_gb": 24,
+        "pressure": "warning"
+      },
+      "disk": [
+        {
+          "mount": "/",
+          "use_pct": 6,
+          "used_gb": 11.4,
+          "total_gb": 926.4,
+          "alert": "ok"
+        },
+        {
+          "mount": "/System/Volumes/Data",
+          "use_pct": 78,
+          "used_gb": 689.2,
+          "total_gb": 926.4,
+          "alert": "warning"
+        },
+        {
+          "mount": "/Volumes/KyberBot",
+          "use_pct": 81,
+          "used_gb": 0.3,
+          "total_gb": 0.4,
+          "alert": "warning"
+        },
+        {
+          "mount": "/Volumes/KyberBot",
+          "use_pct": 82,
+          "used_gb": 0.5,
+          "total_gb": 0.6,
+          "alert": "warning"
+        }
+      ],
+      "disk_alert": "warning",
+      "tools": {
+        "ruby": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin25]",
+        "node": "v24.13.0",
+        "bun": "1.3.1",
+        "python3": "Python 3.14.3",
+        "ansible": "ansible [core 2.20.2]",
+        "git": "git version 2.49.0",
+        "brew": "Homebrew 5.1.7-116-gb9763ee",
+        "claude": "2.1.119 (Claude Code)",
+        "tmux": "tmux 3.5a",
+        "docker": "Docker version 28.3.0, build 38b7060",
+        "rbenv": "rbenv 1.3.2",
+        "tailscale": "1.96.5",
+        "brew_outdated": 94
+      },
+      "skills": {
+        "global_count": 52,
+        "plugin_count": 5,
+        "claude_version": "2.1.119 (Claude Code)"
+      },
+      "apps": {
+        "total": 22,
+        "running": [],
+        "running_count": 0
+      },
+      "identity": {
+        "os": "26.2",
+        "arch": "arm64",
+        "uptime": "20 days, 14:02",
+        "load_1m": 1.94
+      }
+    },
+    {
+      "name": "mac-mini-m4",
+      "host": "mac-mini-m4",
+      "status": "online",
+      "checked_at": "2026-04-27T02:17:04.216Z",
+      "collection_errors": 0,
+      "memory": {
+        "use_pct": 96,
+        "used_gb": 23,
+        "total_gb": 24,
+        "pressure": "warning"
+      },
+      "disk": [
+        {
+          "mount": "/",
+          "use_pct": 9,
+          "used_gb": 11.6,
+          "total_gb": 460.4,
+          "alert": "ok"
+        },
+        {
+          "mount": "/System/Volumes/Data",
+          "use_pct": 70,
+          "used_gb": 285.2,
+          "total_gb": 460.4,
+          "alert": "warning"
+        },
+        {
+          "mount": "/Volumes/M4Pro-TimeMachine-2026",
+          "use_pct": 73,
+          "used_gb": 440.4,
+          "total_gb": 605.4,
+          "alert": "warning"
+        },
+        {
+          "mount": "/Volumes/T7",
+          "use_pct": 76,
+          "used_gb": 945.5,
+          "total_gb": 1257.5,
+          "alert": "warning"
+        },
+        {
+          "mount": "/Volumes/KyberBot",
+          "use_pct": 82,
+          "used_gb": 0.5,
+          "total_gb": 0.6,
+          "alert": "warning"
+        }
+      ],
+      "disk_alert": "warning",
+      "tools": {
+        "ruby": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin25]",
+        "node": "v24.13.0",
+        "bun": "1.3.10",
+        "python3": "Python 3.14.3",
+        "ansible": "ansible [core 2.20.2]",
+        "git": "git version 2.53.0",
+        "brew": "Homebrew 5.1.7",
+        "claude": "2.1.89 (Claude Code)",
+        "tmux": "tmux 3.6a",
+        "docker": "Docker version 29.2.1, build a5c7197",
+        "rbenv": "rbenv 1.3.2",
+        "ollama": "ollama version is 0.20.7",
+        "tailscale": "1.96.5",
+        "brew_outdated": 50
+      },
+      "skills": {
+        "global_count": 54,
+        "plugin_count": 9,
+        "claude_version": "2.1.89 (Claude Code)"
+      },
+      "apps": {
+        "total": 22,
+        "running": [
+          "Signal Studio"
+        ],
+        "running_count": 1
+      },
+      "identity": {
+        "os": "26.3.1",
+        "arch": "arm64",
+        "uptime": "11 days,  3:09",
+        "load_1m": 4.78
+      }
+    },
+    {
+      "name": "mac-mini-m2",
+      "host": "mac-mini-m2",
+      "status": "online",
+      "checked_at": "2026-04-27T02:17:30.130Z",
+      "collection_errors": 0,
+      "memory": {
+        "use_pct": 91,
+        "used_gb": 29,
+        "total_gb": 32,
+        "pressure": "ok"
+      },
+      "disk": [
+        {
+          "mount": "/",
+          "use_pct": 7,
+          "used_gb": 14.8,
+          "total_gb": 460.4,
+          "alert": "ok"
+        },
+        {
+          "mount": "/System/Volumes/Data",
+          "use_pct": 48,
+          "used_gb": 200.9,
+          "total_gb": 460.4,
+          "alert": "ok"
+        }
+      ],
+      "disk_alert": "ok",
+      "tools": {
+        "ruby": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin25]",
+        "node": "v24.13.0",
+        "python3": "Python 3.14.3",
+        "git": "git version 2.52.0",
+        "brew": "Homebrew 5.1.7",
+        "claude": "2.1.51 (Claude Code)",
+        "tmux": "tmux 3.6a",
+        "docker": "Docker version 28.0.4, build b8034c0",
+        "rbenv": "rbenv 1.3.2",
+        "tailscale": "1.94.2",
+        "brew_outdated": 35
+      },
+      "skills": {
+        "global_count": 51,
+        "plugin_count": 5,
+        "claude_version": "2.1.51 (Claude Code)"
+      },
+      "apps": {
+        "total": 22,
+        "running": [],
+        "running_count": 0
+      },
+      "identity": {
+        "os": "26.3",
+        "arch": "arm64",
+        "uptime": "52 days, 23:24",
+        "load_1m": 3.8
+      }
+    },
+    {
+      "name": "jan",
+      "host": "jans-mac-mini",
+      "status": "online",
+      "checked_at": "2026-04-27T02:17:43.228Z",
+      "collection_errors": 0,
+      "memory": {
+        "use_pct": 94,
+        "used_gb": 15,
+        "total_gb": 16,
+        "pressure": "ok"
+      },
+      "disk": [
+        {
+          "mount": "/",
+          "use_pct": 5,
+          "used_gb": 11.6,
+          "total_gb": 460.4,
+          "alert": "ok"
+        },
+        {
+          "mount": "/System/Volumes/Data",
+          "use_pct": 38,
+          "used_gb": 163.8,
+          "total_gb": 460.4,
+          "alert": "ok"
+        }
+      ],
+      "disk_alert": "ok",
+      "tools": {
+        "ruby": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin25]",
+        "node": "v24.13.0",
+        "python3": "Python 3.14.3",
+        "git": "git version 2.53.0",
+        "brew": "Homebrew 5.1.7",
+        "claude": "2.1.119 (Claude Code)",
+        "tmux": "tmux 3.6a",
+        "rbenv": "rbenv 1.3.2",
+        "ollama": "Warning: could not connect to a running Ollama instance",
+        "tailscale": "1.96.5",
+        "brew_outdated": 24
+      },
+      "skills": {
+        "global_count": 17,
+        "plugin_count": 4,
+        "claude_version": "2.1.119 (Claude Code)"
+      },
+      "apps": {
+        "total": 22,
+        "running": [],
+        "running_count": 0
+      },
+      "identity": {
+        "os": "26.3.1",
+        "arch": "arm64",
+        "uptime": "3:14",
+        "load_1m": 1.69
+      }
+    },
+    {
+      "name": "mary",
+      "host": "marys-mac-mini",
+      "status": "online",
+      "checked_at": "2026-04-27T02:18:16.639Z",
+      "collection_errors": 0,
+      "memory": {
+        "use_pct": 94,
+        "used_gb": 15,
+        "total_gb": 16,
+        "pressure": "ok"
+      },
+      "disk": [
+        {
+          "mount": "/",
+          "use_pct": 5,
+          "used_gb": 16.7,
+          "total_gb": 460.4,
+          "alert": "ok"
+        },
+        {
+          "mount": "/System/Volumes/Data",
+          "use_pct": 21,
+          "used_gb": 89.2,
+          "total_gb": 460.4,
+          "alert": "ok"
+        }
+      ],
+      "disk_alert": "ok",
+      "tools": {
+        "ruby": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin24]",
+        "node": "v24.13.0",
+        "python3": "Python 3.14.3",
+        "ansible": "ansible [core 2.20.3]",
+        "git": "git version 2.53.0",
+        "brew": "Homebrew 5.1.7",
+        "claude": "2.1.85 (Claude Code)",
+        "tmux": "tmux 3.6a",
+        "rbenv": "rbenv 1.3.2",
+        "ollama": "Warning: could not connect to a running Ollama instance",
+        "tailscale": "1.96.5",
+        "brew_outdated": 22
+      },
+      "skills": {
+        "global_count": 0,
+        "plugin_count": 0,
+        "claude_version": "2.1.85 (Claude Code)"
+      },
+      "apps": {
+        "total": 22,
+        "running": [],
+        "running_count": 0
+      },
+      "identity": {
+        "os": "15.7.4",
+        "arch": "arm64",
+        "uptime": "2:49",
+        "load_1m": 1.88
+      }
+    }
+  ],
+  "alerts": [
+    {
+      "machine": "macbook-pro",
+      "kind": "memory",
+      "level": "warning",
+      "detail": "92% used, pressure: warning"
+    },
+    {
+      "machine": "macbook-pro",
+      "kind": "disk",
+      "level": "warning",
+      "detail": "/System/Volumes/Data: 78% (689.2G / 926.4G)"
+    },
+    {
+      "machine": "macbook-pro",
+      "kind": "disk",
+      "level": "warning",
+      "detail": "/Volumes/KyberBot: 81% (0.3G / 0.4G)"
+    },
+    {
+      "machine": "macbook-pro",
+      "kind": "disk",
+      "level": "warning",
+      "detail": "/Volumes/KyberBot: 82% (0.5G / 0.6G)"
+    },
+    {
+      "machine": "mac-mini-m4",
+      "kind": "memory",
+      "level": "warning",
+      "detail": "96% used, pressure: warning"
+    },
+    {
+      "machine": "mac-mini-m4",
+      "kind": "disk",
+      "level": "warning",
+      "detail": "/System/Volumes/Data: 70% (285.2G / 460.4G)"
+    },
+    {
+      "machine": "mac-mini-m4",
+      "kind": "disk",
+      "level": "warning",
+      "detail": "/Volumes/M4Pro-TimeMachine-2026: 73% (440.4G / 605.4G)"
+    },
+    {
+      "machine": "mac-mini-m4",
+      "kind": "disk",
+      "level": "warning",
+      "detail": "/Volumes/T7: 76% (945.5G / 1257.5G)"
+    },
+    {
+      "machine": "mac-mini-m4",
+      "kind": "disk",
+      "level": "warning",
+      "detail": "/Volumes/KyberBot: 82% (0.5G / 0.6G)"
+    }
+  ],
+  "alert_count": 9
+}
