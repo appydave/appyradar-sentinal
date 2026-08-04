@@ -21,8 +21,18 @@ function makeResult<T>(data: T, snapshot: FleetSnapshot): QueryResult<T> {
   }
 }
 
-function worstDiskAlert(machine: MachineSnapshot): 'ok' | 'warning' | 'critical' {
-  if (!machine.disk?.length) return 'ok'
+/**
+ * Worst disk alert across a machine's volumes.
+ *
+ * Returns 'unknown' — NOT 'ok' — when there is no disk data. A machine that has
+ * never reported has not been found healthy; it has not been measured. Every
+ * other field in getFleetStatus() signals absence with `?? null`, and this one
+ * used to be the exception: on 2026-08-04 four offline machines rendered as
+ * `disk_alert: "ok"` with every real metric null, which reads on a dashboard as
+ * a green fleet. A default that looks like good news is worse than a blank.
+ */
+function worstDiskAlert(machine: MachineSnapshot): 'ok' | 'warning' | 'critical' | 'unknown' {
+  if (!machine.disk?.length) return 'unknown'
   if (machine.disk.some(d => d.alert === 'critical')) return 'critical'
   if (machine.disk.some(d => d.alert === 'warning'))  return 'warning'
   return 'ok'
