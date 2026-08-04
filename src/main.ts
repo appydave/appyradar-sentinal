@@ -124,7 +124,13 @@ sentinel.lifecycle.onStart(async () => {
     for (const machine of machines) {
       const data = await collectMachine(machine, apps, {
         skipGit: cfg.skipGit,
-        log: (msg) => sentinel.logger.info(msg),
+        // debug, not info: this is per-machine progress chatter ("✓ online",
+        // "tools...", "angeleye...") meant for an attached terminal. Under
+        // launchd, stdout is redirected to a file that nothing rotates, so at
+        // info level it wrote ~333k lines / 48 MB of spinner text to disk.
+        // The outcome of each cycle is still recorded by the emit() below and
+        // the 'collection cycle complete' summary.
+        log: (msg) => sentinel.logger.debug(msg),
       })
       results.push(data)
 
