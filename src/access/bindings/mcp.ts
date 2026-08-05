@@ -25,6 +25,14 @@ import {
   getSkillsDiff,
   getGitDirty,
 } from '../query/fleet.js'
+import {
+  pauseCollection,
+  resumeCollection,
+  triggerCollection,
+  addMachine,
+  removeMachine,
+  investigateMachine,
+} from '../command/fleet.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const SNAPSHOT_PATH = join(__dirname, '..', '..', '..', 'snapshots', 'sentinel-latest.json')
@@ -108,6 +116,64 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: [],
       },
     },
+    // ── Commands ────────────────────────────────────────────────────────────────
+    {
+      name: 'pause_collection',
+      description: 'Stop collecting data for a machine on the next loop tick.',
+      inputSchema: {
+        type: 'object',
+        properties: { machine: { type: 'string', description: 'Machine name to pause.' } },
+        required: ['machine'],
+      },
+    },
+    {
+      name: 'resume_collection',
+      description: 'Re-enable collection for a previously paused machine.',
+      inputSchema: {
+        type: 'object',
+        properties: { machine: { type: 'string', description: 'Machine name to resume.' } },
+        required: ['machine'],
+      },
+    },
+    {
+      name: 'trigger_collection',
+      description: 'Queue an immediate collection cycle (runs at the next loop tick). Optionally target one machine.',
+      inputSchema: {
+        type: 'object',
+        properties: { machine: { type: 'string', description: 'Specific machine, or omit for all.' } },
+        required: [],
+      },
+    },
+    {
+      name: 'investigate_machine',
+      description: 'Run a one-off immediate collection for one machine and patch the snapshot now. Use for onboarding, post-maintenance, or debugging.',
+      inputSchema: {
+        type: 'object',
+        properties: { machine: { type: 'string', description: 'Machine name to investigate.' } },
+        required: ['machine'],
+      },
+    },
+    {
+      name: 'add_machine',
+      description: 'Add a new machine to the fleet config and immediately investigate it.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Logical name (e.g. macbook-pro).' },
+          host: { type: 'string', description: 'SSH hostname or Tailscale name.' },
+        },
+        required: ['name', 'host'],
+      },
+    },
+    {
+      name: 'remove_machine',
+      description: 'Remove a machine from the fleet config.',
+      inputSchema: {
+        type: 'object',
+        properties: { machine: { type: 'string', description: 'Machine name to remove.' } },
+        required: ['machine'],
+      },
+    },
   ],
 }))
 
@@ -123,8 +189,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'disk_usage':     return text(withSnapshot(s => getDiskUsage(s, machine)))
     case 'alerts':         return text(withSnapshot(s => getAlerts(s)))
     case 'skills_diff':    return text(withSnapshot(s => getSkillsDiff(s)))
-    case 'git_dirty':      return text(withSnapshot(s => getGitDirty(s, machine)))
-    default:               return text({ error: `Unknown tool: ${name}` })
+    case 'git_dirty':          return text(withSnapshot(s => getGitDirty(s, machine)))
+    // Commands
+    case 'pause_collection':   return text(await pauseCollection(machine!))
+    case 'resume_collection':  return text(await resumeCollection(machine!))
+    case 'trigger_collection': return text(await triggerCollection(machine))
+    case 'investigate_machine':return text(await investigateMachine(machine!))
+    case 'add_machine':        return text(await addMachine({ name: (args as any).name, host: (args as any).host }))
+    case 'remove_machine':     return text(await removeMachine(machine!))
+    default:                   return text({ error: `Unknown tool: ${name}` })
   }
 })
 

@@ -1,52 +1,43 @@
 # appyradar-sentinal
 
-A per-machine, observer-only telemetry collector built on [AppySentinel](https://github.com/appydave/appysentinal).
+Fleet telemetry collector for the AppyDave machine network. Built on [AppySentinel](https://github.com/appydave/appysentinal).
 
-This project was scaffolded by `create-appysentinel`. It currently contains only the **walking skeleton** — `createSentinel()` is wired up, but no collectors, storage, interface, or transport are configured yet.
+SSHes into 5 machines (macbook-pro, mac-mini-m4, mac-mini-m2, jan, mary), collects system state, writes `snapshots/sentinel-latest.json`, and exposes 13 MCP tools for querying and controlling the fleet from Claude Code.
 
-## Run it (dev)
-
-```bash
-bun install
-bun src/main.ts
-```
-
-You should see a single `sentinel.started` event on stdout, then the process keeps running until you Ctrl-C.
-
-## Install as an always-on service
-
-Run once on the target machine when you're ready to deploy:
+## Run (dev)
 
 ```bash
-bash scripts/install-service.sh
+bun src/main.ts       # live collection loop — Ctrl-C to stop
+bun run test          # 102 tests
+bun run typecheck     # TypeScript check
 ```
 
-Supports macOS (launchd) and Linux (systemd). Starts on login, restarts on crash.
-
-To remove:
+## Install as always-on service
 
 ```bash
-bash scripts/uninstall-service.sh
+bash scripts/install-service.sh    # macOS (launchd) or Linux (systemd)
+bash scripts/uninstall-service.sh  # remove
 ```
 
-## Configure it
+Service restarts automatically on crash and on login.
 
-Open Claude Code inside this project to start wiring recipes:
+## Register MCP tools with Claude Code
 
 ```bash
-claude
+claude mcp add --scope user appyradar-sentinel -- bun /absolute/path/to/src/access/bindings/mcp.ts
 ```
 
-Recipes add real capabilities: file watchers, SSH orchestration, storage, HTTP/MCP expose surfaces, outbound transports.
+Use `--scope user` so the tools are available in all Claude Code sessions, not just this project folder. Restart Claude Code after registering.
 
-## What's baked in vs what's a recipe
+## MCP tools
 
-**Baked in** (this template + `@appydave/appysentinel-core`):
-- Signal envelope, SignalBus, lifecycle harness (SIGINT/SIGTERM/SIGHUP), config loader, atomic write, serial queue, Pino logger, `createSentinel()` factory.
-- Service registration scripts (`scripts/`).
+**Query (read snapshot):** `fleet_status`, `machine_detail`, `running_apps`, `disk_usage`, `alerts`, `skills_diff`, `git_dirty`
 
-**Added by recipes** (written during your build session):
-- Collectors, storage, interfaces, transports, enrichment.
+**Command (control sentinel):** `pause_collection`, `resume_collection`, `trigger_collection`, `investigate_machine`, `add_machine`, `remove_machine`
+
+## Configure
+
+Copy `sentinel.config.example.json` → `sentinel.config.json` and fill in your machine names and hosts. Config is gitignored.
 
 ## License
 
