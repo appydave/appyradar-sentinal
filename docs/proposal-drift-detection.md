@@ -72,6 +72,7 @@ Each is a bash predicate returning JSON — the shape `collect/collectors/bash-s
 | `repo.archived_with_local_commits` | GitHub repo archived **and** local commits ahead | 4 commits unpushable and unbacked-up; found only by accident |
 | `swap.regrowth` | swapfile count rising while uptime > 3 d | swap is a rate, not a stock — reboot is a ~4-day loan |
 | `disk.trending_full` | linear fit on `disk.*.free` crosses 0 within 14 d | thresholds fire too late on a machine at 90% |
+| `sqlite.bloated` | SQLite file where `freelist_count` > 50% of `page_count` | Wispr Flow: 3.26 GiB file holding 0.13 GiB of data — 96% already-deleted pages that `auto_vacuum=0` never returns. Invisible to every disk tool |
 | `dupe.real_copies` | identical size+name in two trees, both `privatesize > 0` | ~16 GiB of real copies where clones were expected |
 
 ⚠️ `dupe.real_copies` requires the APFS clone probe — `du`/`nlink` **cannot** see this.
@@ -113,8 +114,21 @@ MCP already exists; every current tool answers *"what is true now"*. Add history
 
 ---
 
-## The reservation
+## This is the product, not an expansion
 
-This turns a fleet-status utility into a drift engine — a real scope expansion, and the failure mode is
-that it becomes a *project* rather than a tool. Mitigation is discipline: same collector shape, one new
-table, no framework. **If step 2 alone shipped and nothing else, it would still have paid for itself.**
+An earlier draft of this document filed the above as "scope creep — the risk is AppyRadar becomes a
+*project* rather than a tool." **That was wrong, and the correction is worth recording.**
+
+AppyRadar's stated purpose is *a radar over every machine, so resource-allocation problems can be
+solved.* **Disk is the textbook resource-allocation problem** — a finite pool, many competing
+consumers, and decisions about what to evict. Time series over resource consumption, and detectors
+that fire when a consumer misbehaves, are not an addition to that mission. They *are* it.
+
+The mistake is worth naming because it is a recurring failure mode when advising: **treating a
+product's core purpose as scope creep because the current implementation happens not to cover it
+yet.** What exists today (a point-in-time fleet snapshot) is an early slice, not the definition.
+
+The only real discipline needed is implementation restraint — same collector shape, one new table,
+nine bash predicates, no DSL. That is a build constraint, not a reason to hesitate.
+
+**Even step 2 alone — the time series, no detectors — would have paid for itself this week.**
