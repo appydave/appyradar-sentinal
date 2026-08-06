@@ -33,6 +33,7 @@ import {
   addMachine,
   removeMachine,
   investigateMachine,
+  runDrift,
 } from '../command/fleet.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -131,6 +132,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     // ── Commands ────────────────────────────────────────────────────────────────
     {
+      name: 'run_drift',
+      description: 'Force the drift rules to run on the next collection tick, bypassing the ~12h interval. Use this to get fresh drift data on demand. The rules walk the filesystem, so the cycle takes longer than usual.',
+      inputSchema: {
+        type: 'object',
+        properties: { machine: { type: 'string', description: 'Specific machine, or omit for all.' } },
+        required: [],
+      },
+    },
+    {
       name: 'pause_collection',
       description: 'Stop collecting data for a machine on the next loop tick.',
       inputSchema: {
@@ -208,6 +218,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'pause_collection':   return text(await pauseCollection(machine!))
     case 'resume_collection':  return text(await resumeCollection(machine!))
     case 'trigger_collection': return text(await triggerCollection(machine))
+    case 'run_drift':          return text(await runDrift(machine))
     case 'investigate_machine':return text(await investigateMachine(machine!))
     case 'add_machine':        return text(await addMachine({ name: (args as any).name, host: (args as any).host }))
     case 'remove_machine':     return text(await removeMachine(machine!))

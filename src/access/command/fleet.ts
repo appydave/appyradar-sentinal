@@ -95,6 +95,23 @@ export async function resumeCollection(machineName: string): Promise<{ ok: boole
   return { ok: true, paused }
 }
 
+/**
+ * Force the expensive drift rules to run on the next tick, bypassing the ~12h
+ * interval. This is the PRIMARY path for getting fresh drift data — the
+ * interval is only a backstop so findings do not go stale unattended.
+ */
+export async function runDrift(machineName?: string): Promise<{ ok: boolean; note: string }> {
+  if (!existsSync(STATE_DIR)) mkdirSync(STATE_DIR, { recursive: true })
+  await atomicWrite(
+    join(STATE_DIR, 'trigger.json'),
+    JSON.stringify({ requested_at: new Date().toISOString(), machine: machineName ?? null, drift: true }, null, 2)
+  )
+  return {
+    ok: true,
+    note: `Drift rules queued for ${machineName ?? 'all machines'}; they run on the next collection tick. These walk the filesystem, so expect the cycle to take longer than usual.`,
+  }
+}
+
 export async function triggerCollection(machineName?: string): Promise<{ ok: boolean; note: string }> {
   ensureStateDir()
   await atomicWrite(

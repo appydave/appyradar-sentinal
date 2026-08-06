@@ -284,6 +284,10 @@ done
  * Every rule below was earned by a real incident, not imagined — see
  * docs/proposal-drift-detection.md for the cost each one carried.
  *
+ * ⚠️ COST: these rules walk the filesystem. They are scheduled on their OWN
+ *    interval (default 12h) — NOT every collection cycle. See
+ *    collect/drift-schedule.ts for why, and bound any new find you add here.
+ *
  * Output: one pipe-delimited line per finding
  *   rule|subject|severity|detail
  * No findings = no lines. Silence is a pass.
@@ -318,7 +322,11 @@ done
 # remotion silently regained 5.3 GiB this way after a July cleanup.
 for r in "$HOME"/dev/upstream/repos/*/; do
   [ -d "$r/.git" ] || continue
-  gsz=$(/usr/bin/du -sk "$r/.git" 2>/dev/null | /usr/bin/awk '{print $1}')
+  # du -sk on 115 .git dirs is the third expensive walk. Pack files hold
+  # essentially all of a repo's bytes, so summing them is equivalent and cheap.
+  gsz=$(/usr/bin/find "$r/.git/objects/pack" -name "*.pack" 2>/dev/null \\
+        | /usr/bin/xargs -r /usr/bin/stat -f '%z' 2>/dev/null \\
+        | /usr/bin/awk '{s+=$1} END {printf "%d", s/1024}')
   [ -n "$gsz" ] && [ "$gsz" -gt 204800 ] || continue   # only care above 200MB
   prom=$(git -C "$r" config --get remote.origin.promisor 2>/dev/null)
   [ "$prom" = "true" ] && continue
@@ -326,7 +334,12 @@ for r in "$HOME"/dev/upstream/repos/*/; do
 done
 
 # git.orphan_artifacts — an interrupted fetch leaves a tmp_pack behind forever. Found one at 2.0 GiB.
-/usr/bin/find "$HOME/dev" -name "tmp_pack_*" -mmin +60 2>/dev/null | while read -r t; do
+# -maxdepth 6 reaches <area>/<repo>/.git/objects/pack/ without descending the
+# whole 184 GB tree; -prune skips node_modules and .git interiors where these
+# artifacts never appear. Unbounded, this walked millions of inodes per cycle.
+/usr/bin/find "$HOME/dev" -maxdepth 6 \\
+  \\( -name node_modules -o -name .venv -o -name dist -o -name build \\) -prune -o \\
+  -name "tmp_pack_*" -mmin +60 -print 2>/dev/null | while read -r t; do
   echo "git.orphan_artifacts|$t|warning|$(( $(/usr/bin/stat -f '%z' "$t" 2>/dev/null || echo 0) / 1048576 ))MB orphaned"
 done
 
@@ -350,7 +363,10 @@ done
 
 # sqlite.bloated — deleted rows never return to the filesystem while auto_vacuum=0.
 # Wispr Flow: a 3.26 GiB file holding 0.13 GiB. Invisible to every disk tool.
-/usr/bin/find "$HOME/Library/Application Support" -name "*.sqlite" -size +500M 2>/dev/null | while read -r db; do
+# -maxdepth 4 covers <App>/<sub>/<sub>/file.sqlite. Opening sqlite3 on every
+# large DB is the expensive half, so keep the candidate set small.
+/usr/bin/find "$HOME/Library/Application Support" -maxdepth 4 \\
+  -name "*.sqlite" -size +500M 2>/dev/null | while read -r db; do
   fl=$(/usr/bin/sqlite3 "$db" "PRAGMA freelist_count;" 2>/dev/null)
   pc=$(/usr/bin/sqlite3 "$db" "PRAGMA page_count;" 2>/dev/null)
   [ -n "$fl" ] && [ -n "$pc" ] && [ "\${pc:-0}" -gt 0 ] || continue

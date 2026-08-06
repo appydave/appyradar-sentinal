@@ -53,9 +53,9 @@ export const MAX_REPOS = 100
 export async function collectMachine(
   machine: MachineConfig,
   apps: AppEntry[],
-  options: { skipGit?: boolean; log?: (msg: string) => void } = {}
+  options: { skipGit?: boolean; runDrift?: boolean; log?: (msg: string) => void } = {}
 ): Promise<MachineSnapshot> {
-  const { skipGit = false, log = () => {} } = options
+  const { skipGit = false, runDrift = false, log = () => {} } = options
   const errors: CollectionError[] = []
 
   const track = (collector: string, raw: string): string => {
@@ -117,14 +117,34 @@ export async function collectMachine(
   log(`    angeleye...`)
   const angeleye = parseAngelEye(track('angeleye', sshScript(machine.host, angelEyeScript())))
 
-  // ── Drift detection (1 SSH) ─────────────────────────────────────────────────
-  // NOTE: not wrapped in track(). An empty result here means "no rule fired",
-  // which is a PASS — unlike every other collector, where empty means the SSH
-  // call failed. Treating silence as an error would alarm on a healthy machine.
-  log(`    drift rules...`)
-  const drift = parseDrift(sshScript(machine.host, driftScript()))
-  if (drift.length > 0) {
-    log(`    ⚠ ${drift.length} drift finding(s): ${[...new Set(drift.map(d => d.rule))].join(', ')}`)
+  // ── Drift detection (1 SSH, THROTTLED — off by default) ────────────────────
+  //
+  // Runs only when the caller says so. These rules walk the filesystem and the
+  // facts they find change over days, not minutes — see collect/drift-schedule.ts.
+  // `undefined` (not `[]`) means "not checked this cycle", which is different
+  // from "checked, nothing wrong". Consumers must not read a missing field as a
+  // clean bill of health.
+  //
+  // ⚠️ NOT wrapped in track() — deliberately. Read the comment below before
+  // "fixing" this.
+  //
+  // track() records "this collector returned nothing" as a collection ERROR,
+  // because for every other collector an empty SSH response means the call
+  // failed. Drift is the opposite: no output means NO RULE FIRED, which is a
+  // healthy machine. If drift went through track(), a machine with nothing
+  // wrong would be reported as having a broken collector.
+  //
+  // This is the same class of bug as getFleetStatus()'s disk_alert returning
+  // 'ok' for machines that had never been measured (fixed 2026-08-04): a value
+  // that means "no data" being rendered as a value that means "fine". Whenever
+  // absence and success look identical, check which one the code assumes.
+  let drift: ReturnType<typeof parseDrift> | undefined
+  if (runDrift) {
+    log(`    drift rules...`)
+    drift = parseDrift(sshScript(machine.host, driftScript()))
+    if (drift.length > 0) {
+      log(`    ⚠ ${drift.length} drift finding(s): ${[...new Set(drift.map(d => d.rule))].join(', ')}`)
+    }
   }
 
   // ── Git repos (optional, slow ~3-5 min) ────────────────────────────────────

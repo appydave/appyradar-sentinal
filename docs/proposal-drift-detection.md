@@ -156,3 +156,75 @@ The only real discipline needed is implementation restraint — same collector s
 nine bash predicates, no DSL. That is a build constraint, not a reason to hesitate.
 
 **Even step 2 alone — the time series, no detectors — would have paid for itself this week.**
+
+---
+
+## Time series — storage decision (2026-08-06)
+
+Not built. **Decided, so it is not re-litigated when it is.**
+
+### Where does the store live? → **SQLite**, at `state/history.db`
+
+Rejected: append-only JSONL beside the snapshot. It is simpler to write and worse at everything
+afterwards. `when_did(metric, crossed)` over JSONL means reading and parsing the whole file; the
+findings-fold means a full rewrite on every cycle. Both are one-liners in SQL.
+
+The dependency is already there — `sqlite3` is used by the `sqlite.bloated` detector, and `bun:sqlite`
+ships with the runtime. No new package.
+
+⚠️ **The store's own file is subject to `sqlite.bloated`.** Set `PRAGMA auto_vacuum = INCREMENTAL` at
+creation. A monitoring database that silently grows to 3 GB of free pages would be the most
+embarrassing possible bug in this system — the exact failure it was built to detect.
+
+### What is retained, and for how long?
+
+| Table | Row shape | Rate | Retention |
+|---|---|---|---|
+| `facts` | `ts, machine, metric, value, unit` | ~15 metrics × 144 cycles/day ≈ **2,200 rows/machine/day** | **Forever.** Roughly 4 MB/machine/year — the rate questions need the long tail. |
+| `findings` | `machine, rule, subject, severity, detail, first_seen, last_seen, resolved_at` | one row per *distinct* violation, updated in place | Forever. Resolved rows stay — "did the fix hold" is the point. |
+
+**Do NOT store full machine snapshots per cycle.** That is where this bloats: ~40 KB × 144 × 5 machines
+≈ **28 GB/year**, to answer questions the two tables above already answer. Keep `sentinel-latest.json`
+and the daily file exactly as they are.
+
+Only extract scalars into `facts` — disk free/used per volume, swap total, memory use_pct, per-repo
+`.git` size, pnpm store size. Anything that is a *number over time*.
+
+### How does a finding get its lifecycle?
+
+**This fold is the only genuinely new logic.** Detectors emit timestamp-free observations; the store
+turns a sequence of them into a lifecycle:
+
+```
+for each observation (machine, rule, subject) in this run:
+    if an open row exists (resolved_at IS NULL):  last_seen = now   # still broken
+    else:                                          INSERT first_seen = last_seen = now   # newly broken
+
+for each open row whose (machine, rule, subject) was NOT observed this run:
+    if drift actually RAN for that machine:        resolved_at = now   # fixed
+    # if drift did NOT run, change nothing — see below
+```
+
+⚠️ **The trap is the last line.** Drift runs every ~12h while collection runs every ~10 min. A cycle
+where drift did not run produces `drift: undefined`, *not* `[]`. If the fold reads "no findings" as
+"everything resolved", every finding resolves and re-opens 72 times a day and `first_seen` becomes
+meaningless. **The fold must key off "did drift run for this machine", never off an empty array** —
+which is exactly why `MachineSnapshot.drift` is `undefined` rather than `[]` when unchecked.
+
+### Which rules does the store make possible that a collector cannot?
+
+Named explicitly, because "history is useful" is not a requirement:
+
+| Rule | Why a collector cannot do it |
+|---|---|
+| **`swap.regrowth`** | Needs swap size *at the last N cycles* versus uptime. A collector sees one number and cannot tell 24 GB steady from 24 GB climbing. |
+| **`disk.trending_full`** | A linear fit over `disk.*.free`. Thresholds fire too late at 90%+; the slope is the signal. Would have flagged 2026-08-05's 9 GiB drop as it happened. |
+| **"did the fix hold"** — for *every* existing rule | Needs `resolved_at` and re-open detection. This is what would have caught remotion silently regaining 5.3 GiB in July, and the pnpm store going 1 MB → 5.6 GB in six hours. |
+
+That last row is the real prize: it turns one-off cleanups into something that stays fixed, which is
+the failure mode behind every incident this system was built from.
+
+### Explicitly out of scope
+
+Alerting and push notification (findings surface on request via MCP), any web interface, and
+cross-machine correlation. Ship `facts` + `history()` first; the fold second.

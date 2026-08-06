@@ -236,6 +236,11 @@ export interface MachineSnapshot {
   ansible?: AnsiblePayload
   angeleye?: AngelEyePayload
   git_repos?: GitRepoPayload[]
+  /**
+   * Drift findings. `undefined` means drift was NOT checked this cycle (it runs
+   * on its own ~12h interval); `[]` means it WAS checked and everything passed.
+   * Do not collapse the two — absence of a check is not a clean result.
+   */
   drift?: DriftFinding[]
 }
 

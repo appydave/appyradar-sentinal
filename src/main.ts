@@ -21,6 +21,10 @@ import { hostname } from 'node:os'
 import { readFileSync, existsSync, mkdirSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { collectMachine } from './collect/collectors/orchestrator.js'
+import {
+  readDriftRuns, recordDriftRun, isDriftDue,
+  DEFAULT_DRIFT_INTERVAL_HOURS,
+} from './collect/drift-schedule.js'
 import { readPausedMachines } from './access/command/fleet.js'
 import type { AppEntry, FleetSnapshot } from './types.js'
 import { CONFIG_PATH, SNAPSHOT_DIR, SNAPSHOT_LATEST, STATE_DIR } from './constants.js'
@@ -35,6 +39,8 @@ const SentinelConfigSchema = z.object({
   appsJsonPath:           z.string(),
   collectIntervalMinutes: z.number(),
   skipGit:                z.boolean(),
+  /** How often the expensive drift rules run, independent of the collect cycle. */
+  driftIntervalHours:     z.number().optional(),
 })
 
 const configLoader = createConfigLoader({
@@ -44,12 +50,14 @@ const configLoader = createConfigLoader({
     appsJsonPath:           `${process.env['HOME'] ?? '~'}/.config/appydave/apps.json`,
     collectIntervalMinutes: 10,
     skipGit:                true,
+    driftIntervalHours:     DEFAULT_DRIFT_INTERVAL_HOURS,
   },
   filePath: CONFIG_PATH,
   env: {
     APPS_JSON_PATH:           'appsJsonPath',
     COLLECT_INTERVAL_MINUTES: 'collectIntervalMinutes',
     SKIP_GIT:                 'skipGit',
+    DRIFT_INTERVAL_HOURS:     'driftIntervalHours',
   },
 })
 
@@ -72,11 +80,11 @@ function loadApps(appsJsonPath: string): AppEntry[] {
 
 // ─── Trigger file ─────────────────────────────────────────────────────────────
 
-function consumeTrigger(): { machine: string | null } | null {
+function consumeTrigger(): { machine: string | null; drift?: boolean } | null {
   const triggerPath = join(STATE_DIR, 'trigger.json')
   if (!existsSync(triggerPath)) return null
   try {
-    const trigger = JSON.parse(readFileSync(triggerPath, 'utf8')) as { machine: string | null }
+    const trigger = JSON.parse(readFileSync(triggerPath, 'utf8')) as { machine: string | null; drift?: boolean }
     unlinkSync(triggerPath)
     return trigger
   } catch {
@@ -108,7 +116,7 @@ sentinel.lifecycle.onStart(async () => {
 
   sentinel.logger.info({ machines: cfg.machines.map(m => m.name) }, 'fleet configured')
 
-  async function runCollection(forceMachine?: string | null) {
+  async function runCollection(forceMachine?: string | null, forceDrift = false) {
     const paused = readPausedMachines()
     const apps   = loadApps(cfg.appsJsonPath)
 
@@ -120,10 +128,18 @@ sentinel.lifecycle.onStart(async () => {
       sentinel.logger.info({ paused }, 'skipping paused machines')
     }
 
+    // Drift is throttled independently of the collection cycle — the rules walk
+    // the filesystem and their findings change over days. `forceDrift` is the
+    // on-demand path (run_drift); the interval is only the backstop.
+    const driftIntervalHours = cfg.driftIntervalHours ?? DEFAULT_DRIFT_INTERVAL_HOURS
+    const driftRuns = readDriftRuns()
+
     const results = []
     for (const machine of machines) {
+      const runDrift = forceDrift || isDriftDue(machine.name, driftRuns, driftIntervalHours)
       const data = await collectMachine(machine, apps, {
         skipGit: cfg.skipGit,
+        runDrift,
         // debug, not info: this is per-machine progress chatter ("✓ online",
         // "tools...", "angeleye...") meant for an attached terminal. Under
         // launchd, stdout is redirected to a file that nothing rotates, so at
@@ -133,6 +149,12 @@ sentinel.lifecycle.onStart(async () => {
         log: (msg) => sentinel.logger.debug(msg),
       })
       results.push(data)
+
+      // Record only on success. A failed SSH must not push the next attempt
+      // 12 hours out — an unreachable machine should be retried, not skipped.
+      if (runDrift && data.status === 'online') {
+        await recordDriftRun(machine.name)
+      }
 
       sentinel.emit({
         source:  'orchestrator-ssh',
@@ -185,8 +207,9 @@ sentinel.lifecycle.onStart(async () => {
     // Consume trigger file if present — lets a command request a specific machine or full cycle.
     const trigger = consumeTrigger()
     const forceMachine = trigger?.machine ?? undefined
-    if (trigger) sentinel.logger.info({ machine: forceMachine ?? 'all' }, 'triggered collection')
-    runCollection(forceMachine).catch(err => sentinel.logger.error(err, 'collection failed'))
+    const forceDrift = trigger?.drift === true
+    if (trigger) sentinel.logger.info({ machine: forceMachine ?? 'all', drift: forceDrift }, 'triggered collection')
+    runCollection(forceMachine, forceDrift).catch(err => sentinel.logger.error(err, 'collection failed'))
   }, intervalMs)
 })
 

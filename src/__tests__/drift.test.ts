@@ -63,9 +63,35 @@ describe('driftScript', () => {
   })
 
   it('suppresses stderr on every find, so EACCES noise never reaches the parser', () => {
-    const finds = script.split('\n').filter(l => l.includes('find ') && !l.trim().startsWith('#'))
-    expect(finds.length).toBeGreaterThan(0)
-    for (const f of finds) expect(f).toContain('2>/dev/null')
+    // Join backslash line-continuations first — the finds are wrapped for
+    // readability, so a naive per-line check reports a false failure when
+    // `2>/dev/null` sits on the continuation. (It did, on 2026-08-06.)
+    const logical = script
+      .replace(/\\\s*\n\s*/g, ' ')
+      .split('\n')
+      .filter(l => l.includes('find ') && !l.trim().startsWith('#'))
+
+    expect(logical.length).toBeGreaterThan(0)
+    for (const f of logical) expect(f).toContain('2>/dev/null')
+  })
+
+  it('bounds every filesystem walk with -maxdepth — an unbounded walk is the cost bug', () => {
+    const logical = script
+      .replace(/\\\s*\n\s*/g, ' ')
+      .split('\n')
+      .filter(l => l.includes('/usr/bin/find') && !l.trim().startsWith('#'))
+
+    expect(logical.length).toBeGreaterThan(0)
+    for (const f of logical) {
+      // The pack-file scan is already confined to one repo's objects/pack dir.
+      if (f.includes('objects/pack')) continue
+      expect(f).toContain('-maxdepth')
+    }
+  })
+
+  it('prunes node_modules on the ~/dev walk — millions of inodes with no findings in them', () => {
+    const logical = script.replace(/\\\s*\n\s*/g, ' ')
+    expect(logical).toMatch(/find "\$HOME\/dev".*-name node_modules.*-prune/)
   })
 
   it('uses absolute tool paths — a non-interactive SSH shell has a minimal PATH', () => {
