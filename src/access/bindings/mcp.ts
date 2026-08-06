@@ -35,6 +35,7 @@ import {
   investigateMachine,
   runDrift,
 } from '../command/fleet.js'
+import { readDriftRuns } from '../../collect/drift-schedule.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const SNAPSHOT_PATH = join(__dirname, '..', '..', '..', 'snapshots', 'sentinel-latest.json')
@@ -213,7 +214,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'alerts':         return text(withSnapshot(s => getAlerts(s)))
     case 'skills_diff':    return text(withSnapshot(s => getSkillsDiff(s)))
     case 'git_dirty':          return text(withSnapshot(s => getGitDirty(s, machine)))
-    case 'drift_findings':     return text(withSnapshot(s => getDriftFindings(s, { machine, severity: (args as any)?.severity })))
+    case 'drift_findings':     return text(withSnapshot(s => getDriftFindings(s, { machine, severity: (args as any)?.severity, driftRuns: readDriftRuns() })))
     // Commands
     case 'pause_collection':   return text(await pauseCollection(machine!))
     case 'resume_collection':  return text(await resumeCollection(machine!))

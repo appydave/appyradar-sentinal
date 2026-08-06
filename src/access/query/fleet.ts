@@ -8,6 +8,7 @@
 
 import type { QueryResult } from '@appydave/appysentinel-core'
 import type { FleetSnapshot, MachineSnapshot } from '../../types.js'
+import { minutesUntilDriftDue, DEFAULT_DRIFT_INTERVAL_HOURS } from '../../collect/drift-schedule.js'
 
 const STALE_THRESHOLD_MS = 60 * 60 * 1_000
 
@@ -178,20 +179,45 @@ export function getGitDirty(snapshot: FleetSnapshot, machineName?: string) {
 /**
  * Drift findings across the fleet — rule violations, not measurements.
  *
- * Empty means every rule passed on every online machine. That is a real
- * result, distinct from `machines: []` (nothing collected yet), so both the
- * count and the machines-checked count are returned.
+ * ⚠️ ONLINE ≠ CHECKED. Drift runs on its own ~12h interval, so on most cycles a
+ * machine is online with `drift === undefined` — meaning *not checked*, which is
+ * NOT the same as checked-and-clean (`drift === []`). Counting online machines as
+ * checked, or collapsing `undefined` into `[]` with `?? []`, reports an unexamined
+ * machine as healthy. Both of those bugs existed here between 2026-08-05 and
+ * 2026-08-06.
+ *
+ * PRIOR ART — this is the third instance of one defect class in this codebase:
+ *   1. `worstDiskAlert()` returned 'ok' for machines that had never reported disk.
+ *   2. `track()` records an empty collector result as an ERROR, which is right for
+ *      every collector except drift, where empty means "no rule fired".
+ *   3. This function counted online-but-unchecked machines as checked.
+ * In each case a value meaning "no data" rendered as a value meaning "fine".
+ * **Whenever absence and success can look identical, make them different types.**
+ *
+ * `driftRuns` is passed in rather than read from disk — this module is documented
+ * as pure functions over FleetSnapshot, and reading state here would break that.
  */
 export function getDriftFindings(
   snapshot: FleetSnapshot,
-  opts: { machine?: string; severity?: 'info' | 'warning' | 'critical' } = {}
+  opts: {
+    machine?: string
+    severity?: 'info' | 'warning' | 'critical'
+    /** machine -> ISO timestamp of last drift run, for the not-checked ETA. */
+    driftRuns?: Record<string, string>
+    driftIntervalHours?: number
+  } = {}
 ) {
   const machines = opts.machine
     ? snapshot.machines.filter(m => m.machine === opts.machine)
     : snapshot.machines
 
-  const findings = machines.flatMap(m =>
-    (m.drift ?? []).map(d => ({ machine: m.machine, ...d }))
+  // Deliberately NOT `m.drift ?? []` — see the header. An unchecked machine
+  // contributes no findings AND must not be counted as clean.
+  const checked   = machines.filter(m => m.drift !== undefined)
+  const unchecked = machines.filter(m => m.status === 'online' && m.drift === undefined)
+
+  const findings = checked.flatMap(m =>
+    m.drift!.map(d => ({ machine: m.machine, ...d }))
   ).filter(f => !opts.severity || f.severity === opts.severity)
 
   const rank = { critical: 0, warning: 1, info: 2 } as const
@@ -199,7 +225,14 @@ export function getDriftFindings(
 
   return makeResult({
     finding_count: findings.length,
-    machines_checked: machines.filter(m => m.status === 'online').length,
+    machines_checked: checked.length,
+    /** Online but not drift-checked this cycle. Their state is UNKNOWN, not clean. */
+    machines_not_checked: unchecked.map(m => ({
+      machine: m.machine,
+      minutes_until_due: opts.driftRuns
+        ? minutesUntilDriftDue(m.machine, opts.driftRuns, opts.driftIntervalHours ?? DEFAULT_DRIFT_INTERVAL_HOURS)
+        : null,
+    })),
     by_rule: findings.reduce<Record<string, number>>((acc, f) => {
       acc[f.rule] = (acc[f.rule] ?? 0) + 1
       return acc
