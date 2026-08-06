@@ -174,3 +174,36 @@ export function getGitDirty(snapshot: FleetSnapshot, machineName?: string) {
     snapshot
   )
 }
+
+/**
+ * Drift findings across the fleet — rule violations, not measurements.
+ *
+ * Empty means every rule passed on every online machine. That is a real
+ * result, distinct from `machines: []` (nothing collected yet), so both the
+ * count and the machines-checked count are returned.
+ */
+export function getDriftFindings(
+  snapshot: FleetSnapshot,
+  opts: { machine?: string; severity?: 'info' | 'warning' | 'critical' } = {}
+) {
+  const machines = opts.machine
+    ? snapshot.machines.filter(m => m.machine === opts.machine)
+    : snapshot.machines
+
+  const findings = machines.flatMap(m =>
+    (m.drift ?? []).map(d => ({ machine: m.machine, ...d }))
+  ).filter(f => !opts.severity || f.severity === opts.severity)
+
+  const rank = { critical: 0, warning: 1, info: 2 } as const
+  findings.sort((a, b) => rank[a.severity] - rank[b.severity] || a.rule.localeCompare(b.rule))
+
+  return makeResult({
+    finding_count: findings.length,
+    machines_checked: machines.filter(m => m.status === 'online').length,
+    by_rule: findings.reduce<Record<string, number>>((acc, f) => {
+      acc[f.rule] = (acc[f.rule] ?? 0) + 1
+      return acc
+    }, {}),
+    findings,
+  }, snapshot)
+}

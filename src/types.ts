@@ -179,6 +179,30 @@ export interface GitRepoPayload {
   remote: string | null
 }
 
+// ─── Drift findings ─────────────────────────────────────────────────────────────
+
+/**
+ * A rule violation detected on a machine — resource drift, not a measurement.
+ *
+ * Every rule here was earned by a real incident during the 2026-07/08 disk
+ * investigations; none are speculative. See docs/proposal-drift-detection.md.
+ *
+ * NOTE ON SHAPE: this is the *observation* of a violation at one point in time.
+ * A finding with a lifecycle (first_seen / last_seen / resolved_at) is a
+ * different thing, built by folding a series of these together. Do not add
+ * timestamps here — the collector reports what is true now, and the store
+ * decides whether that is new.
+ */
+export interface DriftFinding {
+  /** Stable rule id, e.g. 'log.unrotated'. Used as the dedup key with `subject`. */
+  rule: string
+  /** What the rule fired on — a path, repo name, or store version. */
+  subject: string
+  severity: 'info' | 'warning' | 'critical'
+  /** Human-readable specifics: sizes, rates, versions. */
+  detail: string
+}
+
 // ─── Collection errors ──────────────────────────────────────────────────────────
 
 /** Attached per-collector when sshScript returns empty. Distinguishes silent fail from valid empty. */
@@ -212,6 +236,7 @@ export interface MachineSnapshot {
   ansible?: AnsiblePayload
   angeleye?: AngelEyePayload
   git_repos?: GitRepoPayload[]
+  drift?: DriftFinding[]
 }
 
 // ─── Top-level snapshot (snapshot-store shape) ──────────────────────────────────

@@ -25,6 +25,7 @@ import type {
   AnsiblePayload,
   AngelEyePayload,
   GitRepoPayload,
+  DriftFinding,
 } from '../../types.js'
 
 // ─── System snapshot (batched: identity + system + disk) ───────────────────────
@@ -389,4 +390,29 @@ export function parseGitRepos(raw: string): GitRepoPayload[] {
       remote:            remote      || null,
     }
   })
+}
+
+// ─── Drift ──────────────────────────────────────────────────────────────────────
+
+/**
+ * Parse driftScript() output into findings.
+ *
+ * Input is one pipe-delimited line per violation: rule|subject|severity|detail
+ * An empty result is a PASS, not a failure — silence means no rule fired. That
+ * distinction matters: an empty disk collector means "SSH returned nothing",
+ * but an empty drift collector means "nothing is wrong". Do not wire this into
+ * the ssh_empty error path.
+ */
+export function parseDrift(raw: string): DriftFinding[] {
+  if (!raw) return []
+  const findings: DriftFinding[] = []
+  for (const line of raw.split('\n')) {
+    const t = line.trim()
+    if (!t || t.startsWith('---')) continue
+    const [rule, subject, severity, ...rest] = t.split('|')
+    if (!rule || !subject) continue
+    const sev = severity === 'critical' || severity === 'warning' ? severity : 'info'
+    findings.push({ rule, subject, severity: sev, detail: rest.join('|') || '' })
+  }
+  return findings
 }

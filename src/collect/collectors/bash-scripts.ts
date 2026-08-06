@@ -275,3 +275,89 @@ find ${searchDirs} -maxdepth 4 -name ".git" -type d 2>/dev/null | head -${maxRep
 done
 `
 }
+
+// ─── Drift detection ────────────────────────────────────────────────────────────
+
+/**
+ * Resource-drift predicates. One SSH call, all rules.
+ *
+ * Every rule below was earned by a real incident, not imagined — see
+ * docs/proposal-drift-detection.md for the cost each one carried.
+ *
+ * Output: one pipe-delimited line per finding
+ *   rule|subject|severity|detail
+ * No findings = no lines. Silence is a pass.
+ *
+ * ⚠️ Deliberately excluded, because they cannot be answered by bash-over-SSH
+ * at a single point in time:
+ *   - swap.regrowth / disk.trending_full  → need the time series (rates, not states)
+ *   - dupe.real_copies                    → needs the compiled APFS clone probe
+ *   - repo.archived_with_local_commits    → needs the GitHub API
+ */
+export function driftScript(): string {
+  return `
+echo "--- drift ---"
+
+# log.unrotated — launchd redirects stdout to a file nothing rotates.
+# Measured: 181 MB in 11 days (~21 MB/day, ~7.6 GB/yr) before anyone noticed.
+for plist in "$HOME"/Library/LaunchAgents/*.plist; do
+  [ -f "$plist" ] || continue
+  for key in StandardOutPath StandardErrorPath; do
+    lg=$(/usr/bin/plutil -extract "$key" raw "$plist" 2>/dev/null)
+    [ -n "$lg" ] && [ -f "$lg" ] || continue
+    sz=$(/usr/bin/stat -f '%z' "$lg" 2>/dev/null) || continue
+    [ "$sz" -gt 26214400 ] || continue
+    age=$(( ( $(date +%s) - $(/usr/bin/stat -f '%B' "$lg" 2>/dev/null || echo 0) ) / 86400 ))
+    [ "$age" -lt 1 ] && age=1
+    rate=$(( sz / 1048576 / age ))
+    echo "log.unrotated|$lg|warning|$(( sz / 1048576 ))MB, ~\${rate}MB/day, no rotation"
+  done
+done
+
+# repo.filter_lost — --depth 1 does not survive a later fetch; --filter=blob:none does.
+# remotion silently regained 5.3 GiB this way after a July cleanup.
+for r in "$HOME"/dev/upstream/repos/*/; do
+  [ -d "$r/.git" ] || continue
+  gsz=$(/usr/bin/du -sk "$r/.git" 2>/dev/null | /usr/bin/awk '{print $1}')
+  [ -n "$gsz" ] && [ "$gsz" -gt 204800 ] || continue   # only care above 200MB
+  prom=$(git -C "$r" config --get remote.origin.promisor 2>/dev/null)
+  [ "$prom" = "true" ] && continue
+  echo "repo.filter_lost|$(basename "$r")|warning|.git $(( gsz / 1024 ))MB, no blob filter"
+done
+
+# git.orphan_artifacts — an interrupted fetch leaves a tmp_pack behind forever. Found one at 2.0 GiB.
+/usr/bin/find "$HOME/dev" -name "tmp_pack_*" -mmin +60 2>/dev/null | while read -r t; do
+  echo "git.orphan_artifacts|$t|warning|$(( $(/usr/bin/stat -f '%z' "$t" 2>/dev/null || echo 0) / 1048576 ))MB orphaned"
+done
+
+# pnpm.store_version_drift — prune only cleans the store its own version owns.
+sc=$(ls -d "$HOME"/Library/pnpm/store/v* 2>/dev/null | wc -l | tr -d ' ')
+if [ "\${sc:-0}" -gt 1 ]; then
+  vs=$(ls -d "$HOME"/Library/pnpm/store/v* 2>/dev/null | xargs -n1 basename | tr '\\n' ' ')
+  tot=$(/usr/bin/du -sk "$HOME"/Library/pnpm/store 2>/dev/null | /usr/bin/awk '{print $1}')
+  echo "pnpm.store_version_drift|\${vs}|info|\${sc} stores, $(( \${tot:-0} / 1024 ))MB total — prune once per major"
+fi
+
+# backup.frozen — a pre-upgrade snapshot whose mtime stopped moving is dead weight.
+for b in "$HOME"/.kyberagent/backups/* "$HOME"/*backup* ; do
+  [ -d "$b" ] || continue
+  mod=$(( ( $(date +%s) - $(/usr/bin/stat -f '%m' "$b" 2>/dev/null || echo 0) ) / 86400 ))
+  [ "$mod" -gt 30 ] || continue
+  bsz=$(/usr/bin/du -sk "$b" 2>/dev/null | /usr/bin/awk '{print $1}')
+  [ -n "$bsz" ] && [ "$bsz" -gt 512000 ] || continue
+  echo "backup.frozen|$b|info|$(( bsz / 1024 ))MB, untouched \${mod}d"
+done
+
+# sqlite.bloated — deleted rows never return to the filesystem while auto_vacuum=0.
+# Wispr Flow: a 3.26 GiB file holding 0.13 GiB. Invisible to every disk tool.
+/usr/bin/find "$HOME/Library/Application Support" -name "*.sqlite" -size +500M 2>/dev/null | while read -r db; do
+  fl=$(/usr/bin/sqlite3 "$db" "PRAGMA freelist_count;" 2>/dev/null)
+  pc=$(/usr/bin/sqlite3 "$db" "PRAGMA page_count;" 2>/dev/null)
+  [ -n "$fl" ] && [ -n "$pc" ] && [ "\${pc:-0}" -gt 0 ] || continue
+  pct=$(( fl * 100 / pc ))
+  [ "$pct" -gt 50 ] || continue
+  ps=$(/usr/bin/sqlite3 "$db" "PRAGMA page_size;" 2>/dev/null || echo 4096)
+  echo "sqlite.bloated|$db|warning|\${pct}% free pages, $(( fl * ps / 1048576 ))MB reclaimable by VACUUM"
+done
+`
+}

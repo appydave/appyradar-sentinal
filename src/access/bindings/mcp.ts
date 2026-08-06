@@ -24,6 +24,7 @@ import {
   getAlerts,
   getSkillsDiff,
   getGitDirty,
+  getDriftFindings,
 } from '../query/fleet.js'
 import {
   pauseCollection,
@@ -116,6 +117,18 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: [],
       },
     },
+    {
+      name: 'drift_findings',
+      description: 'Resource-drift rule violations across the fleet — unrotated logs, upstream repos that lost their blob filter, orphaned git artifacts, pnpm store version splits, frozen backups, bloated SQLite files. Empty means every rule passed.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          machine: { type: 'string', description: 'Specific machine, or omit for all.' },
+          severity: { type: 'string', enum: ['info', 'warning', 'critical'], description: 'Filter to one severity.' },
+        },
+        required: [],
+      },
+    },
     // ── Commands ────────────────────────────────────────────────────────────────
     {
       name: 'pause_collection',
@@ -190,6 +203,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'alerts':         return text(withSnapshot(s => getAlerts(s)))
     case 'skills_diff':    return text(withSnapshot(s => getSkillsDiff(s)))
     case 'git_dirty':          return text(withSnapshot(s => getGitDirty(s, machine)))
+    case 'drift_findings':     return text(withSnapshot(s => getDriftFindings(s, { machine, severity: (args as any)?.severity })))
     // Commands
     case 'pause_collection':   return text(await pauseCollection(machine!))
     case 'resume_collection':  return text(await resumeCollection(machine!))

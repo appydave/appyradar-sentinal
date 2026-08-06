@@ -23,6 +23,7 @@ import {
   agentStateScript,
   angelEyeScript,
   gitReposScript,
+  driftScript,
 } from './bash-scripts.js'
 import {
   splitSystemSnapshot,
@@ -41,6 +42,7 @@ import {
   parseAnsible,
   parseAngelEye,
   parseGitRepos,
+  parseDrift,
 } from './parsers.js'
 import type { MachineConfig, AppEntry, MachineSnapshot, CollectionError } from '../../types.js'
 
@@ -115,6 +117,16 @@ export async function collectMachine(
   log(`    angeleye...`)
   const angeleye = parseAngelEye(track('angeleye', sshScript(machine.host, angelEyeScript())))
 
+  // ── Drift detection (1 SSH) ─────────────────────────────────────────────────
+  // NOTE: not wrapped in track(). An empty result here means "no rule fired",
+  // which is a PASS — unlike every other collector, where empty means the SSH
+  // call failed. Treating silence as an error would alarm on a healthy machine.
+  log(`    drift rules...`)
+  const drift = parseDrift(sshScript(machine.host, driftScript()))
+  if (drift.length > 0) {
+    log(`    ⚠ ${drift.length} drift finding(s): ${[...new Set(drift.map(d => d.rule))].join(', ')}`)
+  }
+
   // ── Git repos (optional, slow ~3-5 min) ────────────────────────────────────
   let git_repos: ReturnType<typeof parseGitRepos> = []
   if (!skipGit) {
@@ -149,5 +161,6 @@ export async function collectMachine(
     ansible,
     angeleye,
     git_repos,
+    drift,
   }
 }

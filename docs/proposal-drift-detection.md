@@ -1,6 +1,7 @@
 # Proposal — Time Series + Drift Detection
 
-**Status**: proposed, 2026-08-05
+**Status**: **detectors SHIPPED 2026-08-06** (step 3 of the build order, ahead of the time series).
+The series and the findings-lifecycle store remain proposed.
 **Origin**: a 3-day disk investigation on mac-mini-m4 (53 GiB → 31 GiB in 27 hours) where every question
 took manual forensics that a time series would have answered in one query.
 **Related**: `~/dev/ad/brains/mac-os/disk-maintenance-rules.md`, `~/dev/ad/brains/mac-os/apfs-disk-audit.md`
@@ -93,7 +94,30 @@ MCP already exists; every current tool answers *"what is true now"*. Add history
 
 ## Build order
 
-1. **Fix AppyRadar's own hygiene first.** Unarchive + rename the repo (see the `sentinal`/`sentinel`
+✅ **DONE 2026-08-06 — detectors shipped.** `driftScript()` + `parseDrift()` + `DriftFinding`,
+wired into `collectMachine()` as one extra SSH call, surfaced via the `drift_findings` MCP tool.
+Six rules live: `log.unrotated`, `repo.filter_lost`, `git.orphan_artifacts`,
+`pnpm.store_version_drift`, `backup.frozen`, `sqlite.bloated`. 117 tests pass, typecheck clean.
+
+First live fleet run found 3 findings — including an 80 MB orphaned `tmp_pack` on **Jan's** machine,
+a rule earned on the M4 that same morning. Cross-machine value on day one.
+
+⚠️ **`swap.regrowth`, `disk.trending_full` and `dupe.real_copies` are NOT shipped** — the first two
+need the time series (they are rates, not states) and the third needs the compiled APFS clone probe
+on each host. `repo.archived_with_local_commits` needs the GitHub API. Do not assume the detector
+list is complete.
+
+**Design note that mattered**: the drift collector is deliberately NOT wrapped in `track()`. For every
+other collector an empty result means the SSH call failed; for drift it means *no rule fired*, i.e. a
+pass. Wiring it into the `ssh_empty` error path would raise a collection error on a healthy machine.
+
+---
+
+### Remaining build order
+
+1. ~~**Fix AppyRadar's own hygiene first.**~~ **Partly done** — repo unarchived, 9 commits pushed.
+   The `sentinal`→`sentinel` rename is still pending; see `migration-sentinal-to-sentinel.md`.
+   Original note: Unarchive + rename the repo (see the `sentinal`/`sentinel`
    trap in `disk-maintenance-rules.md` — **the misspelt dir is the live app**), push the 4 local commits.
    A monitor that reported `disk_alert: "ok"` for machines it had never measured has to earn trust back
    before it audits anything else.
